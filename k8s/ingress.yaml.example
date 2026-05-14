@@ -1,0 +1,28 @@
+# Opsiyonel: cluster disindan erisim icin Ingress ornegi.
+# Bunu kullanmadan once kendi domain'in ve TLS secret'in ile uyarla.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: usom-bridge
+  namespace: usom-bridge
+  annotations:
+    # nginx-ingress kullaniyorsan:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    # cert-manager varsa:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: usom-bridge.kurum.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: usom-bridge
+                port:
+                  number: 80
+  # tls:
+  #   - hosts: ["usom-bridge.kurum.local"]
+  #     secretName: usom-bridge-tls

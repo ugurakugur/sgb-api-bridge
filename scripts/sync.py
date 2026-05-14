@@ -16,13 +16,16 @@ API:
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import requests
+
+__version__ = "1.0.0"
 
 API_URL = "https://www.usom.gov.tr/api/address/index"
 TYPES = ("domain", "url", "ip", "ip6", "ip6net")
@@ -36,9 +39,14 @@ STOP_AFTER_KNOWN = 40
 DELTA_MAX_PAGES = 200
 CHECKPOINT_EVERY = 25  # full sync: kac sayfada bir state'i diske yaz
 
-ROOT = Path(__file__).resolve().parent.parent
+_ROOT_OVERRIDE = os.environ.get("USOM_BRIDGE_ROOT")
+ROOT = Path(_ROOT_OVERRIDE) if _ROOT_OVERRIDE else Path(__file__).resolve().parent.parent
 DOCS_DIR = ROOT / "docs"
 STATE_FILE = ROOT / "state" / "seen_ids.json"
+
+# Loop mode
+LOOP_DELTA_INTERVAL = int(os.environ.get("USOM_BRIDGE_DELTA_INTERVAL_SEC", "3600"))
+LOOP_FULL_INTERVAL_DAYS = int(os.environ.get("USOM_BRIDGE_FULL_INTERVAL_DAYS", "7"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -420,6 +428,50 @@ def sync(mode: str) -> None:
         write_badge(state)
 
 
+def should_run_full(state: dict) -> bool:
+    """Loop mode'da full sync gerekiyor mu? Hicbir tipte last_full_sync yoksa veya
+    en eski full LOOP_FULL_INTERVAL_DAYS'den eskise True."""
+    oldest = None
+    for t in TYPES:
+        v = state.get(t, {}).get("last_full_sync")
+        if not v:
+            return True
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except Exception:
+            return True
+        if oldest is None or dt < oldest:
+            oldest = dt
+    if oldest is None:
+        return True
+    age = datetime.now(timezone.utc) - oldest
+    return age >= timedelta(days=LOOP_FULL_INTERVAL_DAYS)
+
+
+def loop() -> None:
+    """Cron'suz container'lar icin: delta'yi LOOP_DELTA_INTERVAL'da, full'u haftada bir tetikle."""
+    log.info(
+        f"LOOP basliyor (v{__version__}) - delta her {LOOP_DELTA_INTERVAL}s, "
+        f"full her {LOOP_FULL_INTERVAL_DAYS} gun"
+    )
+    while True:
+        try:
+            state = load_state()
+            mode = "full" if should_run_full(state) else "delta"
+            log.info(f"loop: {mode} tetikleniyor")
+            sync(mode)
+        except KeyboardInterrupt:
+            log.info("KeyboardInterrupt - cikiliyor")
+            return
+        except Exception:
+            log.exception("loop iterasyonu sirasinda hata - devam ediyor")
+        log.info(f"loop: {LOOP_DELTA_INTERVAL}s uyuyor")
+        try:
+            time.sleep(LOOP_DELTA_INTERVAL)
+        except KeyboardInterrupt:
+            return
+
+
 def health_check() -> int:
     stats_file = DOCS_DIR / "stats.json"
     if not stats_file.exists():
@@ -441,8 +493,11 @@ def health_check() -> int:
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=["full", "delta", "healthcheck"], required=True)
+    p.add_argument("--mode", choices=["full", "delta", "loop", "healthcheck"], required=True)
     args = p.parse_args()
     if args.mode == "healthcheck":
         sys.exit(health_check())
-    sync(args.mode)
+    if args.mode == "loop":
+        loop()
+    else:
+        sync(args.mode)

@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: usom-bridge
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - cronjob-delta.yaml
+  - cronjob-full.yaml
+  - deployment.yaml
+  - service.yaml
+  # - ingress.yaml.example    # Ingress'i kullanmak istersen yorum'u ac
+
+# Image tag'i merkezi ayarla
+images:
+  - name: ghcr.io/sinansh/usom-bridge
+    newTag: latest
+
+# Kurulum:
+#   kubectl apply -k k8s/
+# Veya:
+#   kustomize build k8s/ | kubectl apply -f -

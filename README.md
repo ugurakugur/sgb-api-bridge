@@ -6,7 +6,18 @@
 
 USOM (Ulusal Siber Olaylara Müdahale Merkezi) tehdit beslemesini güvenlik duvarlarının (FortiGate, Sophos, Palo Alto, pfSense, Pi-hole, Squid) doğrudan tüketebileceği **düz metin** formatına dönüştüren açık kaynak proje.
 
-## Hızlı başlangıç
+Üç farklı dağıtım modelini destekler:
+
+| Model | Senaryo | Kurulum dokümanı |
+|---|---|---|
+| **GitHub Pages** (genel) | Public CDN, sıfır kurulum, herkese açık feed | [docs/setup-github.md](docs/setup-github.md) |
+| **Self-hosted GitLab** | Kurumun kendi GitLab sunucusu; internet'ten bağımsız | [docs/setup-gitlab.md](docs/setup-gitlab.md) |
+| **Docker** | Tek konteyner, "indir-çalıştır-unut" | [docs/setup-docker.md](docs/setup-docker.md) |
+| **Kubernetes** | CronJob + Deployment, kurumsal | [docs/setup-k8s.md](docs/setup-k8s.md) |
+
+---
+
+## Hızlı başlangıç (GitHub Pages — bu repo)
 
 Aşağıdaki URL'leri firewall'una doğrudan ver:
 
@@ -19,13 +30,34 @@ Aşağıdaki URL'leri firewall'una doğrudan ver:
 | IPv6 subnet | — | `https://sinansh.github.io/usom-bridge/ip6net-list.txt` |
 | Stats | — | `https://sinansh.github.io/usom-bridge/stats.json` |
 
-GitHub Pages, Fastly CDN üzerinde sunulur — yüksek hacimli istekler GitHub backend'e değil CDN'e düşer.
+## Hızlı başlangıç (Docker)
+
+```bash
+docker run -d \
+  --name usom-bridge \
+  -p 8080:80 \
+  -v usom-bridge-data:/data \
+  --restart unless-stopped \
+  ghcr.io/sinansh/usom-bridge:latest
+```
+
+Detay: [docs/setup-docker.md](docs/setup-docker.md)
+
+## Hızlı başlangıç (Kubernetes)
+
+```bash
+git clone https://github.com/sinansh/usom-bridge.git
+kubectl apply -k usom-bridge/k8s/
+```
+
+Detay: [docs/setup-k8s.md](docs/setup-k8s.md)
+
+---
 
 ## Nasıl çalışır?
 
 - **Delta sync** — saatte bir, USOM API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) yalnız yeni kayıtları çeker (~1-3 dk).
-- **Full sync** — pazar 03:00 UTC, tüm kayıtları yeniden çeker (drift düzeltici, ~4 saat).
-- Her iki iş de GitHub Actions üzerinde çalışır; çıktılar `docs/` klasörüne commit'lenir ve GitHub Pages otomatik yayımlar.
+- **Full sync** — pazar 03:00 UTC (veya 7 günde bir, Docker loop modunda), tüm kayıtları yeniden çeker (drift düzeltici, ~5-10 saat). Resume desteklidir; runner timeout'a takılırsa kaldığı yerden devam eder.
 
 USOM API kayıtları tarih sırasına göre newest-first dönüyor ve ID'ler global monoton artıyor. Delta job'ı her tür için `state/seen_ids.json`'daki `max_id`'den büyük kayıtlara ulaşana kadar sayfaları dolaşıp, bilinen kayda denk gelince durur.
 
@@ -48,50 +80,26 @@ config system external-resource
 end
 ```
 
-### Sophos XG / Firewall
+Kendi base URL'ini kullanmak için (GitLab/Docker/K8s) yukarıdaki host kısmını değiştir. Tüm cihazlar (Sophos, Palo Alto, pfSense, Pi-hole, Squid) için detaylı örnekler: [docs/setup-github.md](docs/setup-github.md).
 
-Web Admin → System → Hosts and services → IP host group → **Import from URL**:
-`https://sinansh.github.io/usom-bridge/ip-list.txt`
-
-### Palo Alto
-
-```
-set external-list USOM-IP type ip url https://sinansh.github.io/usom-bridge/ip-list.txt recurring hourly
-set external-list USOM-Domain type domain url https://sinansh.github.io/usom-bridge/domain-list.txt recurring hourly
-```
-
-### pfSense (pfBlockerNG)
-
-Firewall → pfBlockerNG → IPv4 → Add → URL alanına `https://sinansh.github.io/usom-bridge/ip-list.txt` gir.
-
-### Pi-hole
-
-```
-https://sinansh.github.io/usom-bridge/domain-list.txt
-```
-
-Adlist olarak ekle, sonra `pihole -g` ile yenile.
-
-### Squid
-
-```
-acl usom_blacklist dstdomain "/etc/squid/usom-domain-list.txt"
-http_access deny usom_blacklist
-```
-
-```cron
-17 * * * * curl -sf https://sinansh.github.io/usom-bridge/domain-list.txt -o /etc/squid/usom-domain-list.txt && systemctl reload squid
-```
-
-## Kendin koşturmak istersen
+## Kendin koşturmak istersen (CLI)
 
 ```bash
 git clone https://github.com/sinansh/usom-bridge
 cd usom-bridge
 pip install requests
-python scripts/sync.py --mode full     # ~4 saat
+python scripts/sync.py --mode full     # ~5-10 saat
 python scripts/sync.py --mode delta    # ~1-3 dk
+python scripts/sync.py --mode loop     # docker icin: delta saatte, full haftada
 ```
+
+Environment variables:
+
+| Variable | Default | Açıklama |
+|---|---|---|
+| `USOM_BRIDGE_ROOT` | repo kökü | State ve docs/'un kök dizini |
+| `USOM_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda delta sıklığı |
+| `USOM_BRIDGE_FULL_INTERVAL_DAYS` | `7` | Loop modunda full sıklığı |
 
 ## Veri kaynağı
 

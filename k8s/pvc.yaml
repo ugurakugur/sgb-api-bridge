@@ -1,0 +1,15 @@
+# /data icin paylasimli PVC.
+# Sync CronJob'lari yazar, nginx Deployment okur.
+# RWO yeterli cunku CronJob'lar tek tek (Forbid concurrency), Deployment replicas=1.
+# RWX (NFS/CephFS/EFS) kullaniyorsan deployment replicas>1'e cikarabilirsin.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: usom-data
+  namespace: usom-bridge
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: local-path  # cluster'inizin default'una gore ayarlayin

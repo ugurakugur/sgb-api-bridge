@@ -1,0 +1,115 @@
+# USOM Bridge - GitLab CI/CD
+#
+# Kurulum adimlari icin: docs/setup-gitlab.md
+#
+# Servis modeli: Repo'ya commit eden ve raw URL ile sunan model.
+# FortiGate vb. soyle bir URL'den ceker:
+#   https://gitlab.kurum.local/<group>/<project>/-/raw/main/docs/domain-list.txt
+#
+# Repo'nun "Internal" gorunurlukte olmasi (tum oturum acmis kullanicilar erisir)
+# veya tamamen "Public" olmasi gerekir. Aksi takdirde FortiGate token koyamadigi icin
+# erisemez. Alternatif: Pages job'unu acin (asagida yorumda).
+
+stages:
+  - sync
+  - publish
+
+variables:
+  GIT_STRATEGY: clone
+  GIT_DEPTH: "10"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# Push icin gereken yapi (her job icin paylasilan)
+.push_setup: &push_setup
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git curl
+    - git config user.name "usom-bridge-bot"
+    - git config user.email "noreply@${CI_SERVER_HOST}"
+    - |
+      if [ -z "$GIT_PUSH_TOKEN" ]; then
+        echo "HATA: GIT_PUSH_TOKEN CI/CD variable'i tanimli degil."
+        echo "Settings -> Access Tokens -> write_repository scope ile token olustur,"
+        echo "Settings -> CI/CD -> Variables -> GIT_PUSH_TOKEN (masked, protected) ekle."
+        exit 1
+      fi
+    - git remote set-url origin "https://oauth2:${GIT_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+    - git checkout -B "$CI_COMMIT_REF_NAME"
+
+# ---- Delta sync: saatlik ----
+sync:delta:
+  stage: sync
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SYNC_MODE == "delta"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $SYNC_MODE == "delta"'
+  <<: *push_setup
+  script:
+    - pip install -q --cache-dir "$PIP_CACHE_DIR" requests
+    - python scripts/sync.py --mode delta
+    - python scripts/sync.py --mode healthcheck
+    - git add docs/ state/
+    - |
+      if git diff --staged --quiet; then
+        echo "Degisiklik yok"
+      else
+        git commit -m "Delta sync $(date -u +%FT%TZ)"
+        git push origin "HEAD:$CI_COMMIT_REF_NAME"
+      fi
+  cache:
+    key: pip
+    paths: [.cache/pip]
+  timeout: 30m
+  resource_group: usom-sync
+
+# ---- Full sync: haftalik + manuel ----
+sync:full:
+  stage: sync
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SYNC_MODE == "full"'
+    - if: '$CI_PIPELINE_SOURCE == "web" && $SYNC_MODE == "full"'
+  <<: *push_setup
+  script:
+    - pip install -q --cache-dir "$PIP_CACHE_DIR" requests
+    # || true cunku step-level timeout yok; runner timeout'a takilirsa exit code'unu yutalim ki commit yine de calissin
+    - python scripts/sync.py --mode full || echo "Full sync runner timeout'una takilmis olabilir - commit yine de yapilacak"
+    - git add docs/ state/
+    - |
+      if git diff --staged --quiet; then
+        echo "Degisiklik yok"
+      else
+        git commit -m "Full sync $(date -u +%FT%TZ)"
+        git push origin "HEAD:$CI_COMMIT_REF_NAME"
+      fi
+    # Resume_page state'te kaldiysa yeni pipeline tetikle (kendini cagiran zincir)
+    - |
+      if grep -q '"resume_page"' state/seen_ids.json 2>/dev/null; then
+        echo "Full sync bitmedi - resume_page kaldi. Yeni pipeline tetikleniyor."
+        curl -fsS -X POST \
+          --header "PRIVATE-TOKEN: ${GIT_PUSH_TOKEN}" \
+          --form "ref=$CI_COMMIT_REF_NAME" \
+          --form "variables[SYNC_MODE]=full" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/pipeline" \
+          || echo "Yeni pipeline tetiklenemedi, manuel re-run gerekebilir."
+      else
+        echo "Full sync tamam."
+      fi
+  cache:
+    key: pip
+    paths: [.cache/pip]
+  timeout: 6h
+  resource_group: usom-sync
+
+# ---- Opsiyonel: GitLab Pages ----
+# Pages'i kullanmak istersen yorumdan cikar. URL formati:
+#   https://<group>.<pages-domain>/<project>/domain-list.txt
+# pages:
+#   stage: publish
+#   image: alpine:3.19
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+#   script:
+#     - cp -r docs public
+#   artifacts:
+#     paths: [public]
+#     expire_in: 30 days

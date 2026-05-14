@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: usom-serve
+  namespace: usom-bridge
+  labels:
+    app.kubernetes.io/name: usom-bridge
+    app.kubernetes.io/component: serve
+spec:
+  # PVC ReadWriteOnce ise replicas: 1 zorunlu.
+  # RWX bir storage class kullaniyorsan istersen 2+ replikaya cikar.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: usom-bridge
+      app.kubernetes.io/component: serve
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: usom-bridge
+        app.kubernetes.io/component: serve
+    spec:
+      containers:
+        - name: nginx
+          image: ghcr.io/sinansh/usom-bridge:latest
+          imagePullPolicy: IfNotPresent
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: usom-data
