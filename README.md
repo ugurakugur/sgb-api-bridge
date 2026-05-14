@@ -58,10 +58,12 @@ Detay: [docs/setup-k8s.md](docs/setup-k8s.md)
 
 ## Nasıl çalışır?
 
-- **Delta sync** — saatte bir, SGB API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) yalnız yeni kayıtları çeker (~1-3 dk).
-- **Full sync** — pazar 03:00 UTC (veya 7 günde bir, Docker loop modunda), tüm kayıtları yeniden çeker (drift düzeltici, ~5-10 saat). Resume desteklidir; runner timeout'a takılırsa kaldığı yerden devam eder.
+- **Delta sync** — saatte bir, SGB API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) yalnız yeni kayıtları çeker (~1-3 dk). **Sürekli çalışan tek mekanizma budur.**
+- **Full sync** — yalnızca **ilk kurulumda bir kez, elle** çalıştırılır (~10-15+ saat). Otomatik/zamanlı çalışmaz. Resume desteklidir; runner timeout'a takılırsa kaldığı yerden devam eder.
 
 SGB API kayıtları tarih sırasına göre newest-first dönüyor ve ID'ler global monoton artıyor. Delta job'ı her tür için `state/seen_ids.json`'daki `max_id`'den büyük kayıtlara ulaşana kadar sayfaları dolaşıp, bilinen kayda denk gelince durur.
+
+> **Geçmiş veri zaten repo'da.** Bu repo'yu klonlayan / fork eden herkes, `docs/*-list.txt` ve `state/seen_ids.json` dosyalarını hazır alır. Delta sync bu noktadan devam eder — kendi ortamında full sync çalıştırman **gerekmez**. Docker imajı da bu veriyi içinde gömülü taşır (haftalık tazelenir).
 
 ## Cihaz konfigürasyon örnekleri
 
@@ -90,9 +92,9 @@ Kendi base URL'ini kullanmak için (GitLab/Docker/K8s) yukarıdaki host kısmın
 git clone https://github.com/bilsectr/sgb-api-bridge
 cd sgb-api-bridge
 pip install requests
-python scripts/sync.py --mode full     # ~5-10 saat
-python scripts/sync.py --mode delta    # ~1-3 dk
-python scripts/sync.py --mode loop     # docker icin: delta saatte, full haftada
+python scripts/sync.py --mode delta    # ~1-3 dk — repo'daki veriden devam eder
+python scripts/sync.py --mode loop     # docker icin: delta'yi surekli tetikler
+python scripts/sync.py --mode full     # SADECE sifirdan tam re-sync gerekirse (~10-15+ saat)
 ```
 
 Environment variables:
@@ -100,8 +102,8 @@ Environment variables:
 | Variable | Default | Açıklama |
 |---|---|---|
 | `SGB_BRIDGE_ROOT` | repo kökü | State ve docs/'un kök dizini |
-| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda delta sıklığı |
-| `SGB_BRIDGE_FULL_INTERVAL_DAYS` | `7` | Loop modunda full sıklığı |
+| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda delta sıklığı (sn) |
+| `SGB_BRIDGE_DELTA_MAX_PAGES` | `1000` | Delta'nın tek seferde gezeceği maks. sayfa (bayat state güvenlik tavanı) |
 
 ## Veri kaynağı
 

@@ -3,9 +3,11 @@
 SGB API Bridge - SGB (eski USOM) API'sini duz metin feed'e donusturur.
 
 Modlar:
-    --mode full         : Tum tipler icin tum sayfalari ceker (~4 saat). Haftalik refresh.
+    --mode full         : Tum tipler icin tum sayfalari ceker (~10-15+ saat).
+                          SADECE ilk bootstrap / sifirdan re-sync icin, elle calistirilir.
     --mode delta        : Tum tipler icin yalniz yeni kayitlari ceker (~1-3 dk). Saatlik.
-    --mode loop         : Container'lar icin: delta'yi saatlik, full'u haftalik tetikler.
+                          Surekli calisan tek mekanizma budur.
+    --mode loop         : Container'lar icin: delta'yi surekli (saatlik) tetikler.
     --mode healthcheck  : stats.json fresh mi diye bakar (delta workflow'da kullaniliyor).
 
 API:
@@ -21,7 +23,7 @@ import os
 import re
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -37,7 +39,9 @@ MAX_RETRIES = 6
 TIMEOUT = 30
 UA = "sgb-api-bridge/2.0 (+https://github.com/bilsectr/sgb-api-bridge)"
 STOP_AFTER_KNOWN = 40
-DELTA_MAX_PAGES = 200
+# Delta'nin tek calismada gezecegi maksimum sayfa. Normal saatlik delta 3-10 sayfa kullanir;
+# bu tavan yalniz state cok bayatsa (orn. haftalarca delta calismadi) devreye girer.
+DELTA_MAX_PAGES = int(os.environ.get("SGB_BRIDGE_DELTA_MAX_PAGES", "1000"))
 CHECKPOINT_EVERY = 25  # full sync: kac sayfada bir state'i diske yaz
 
 _ROOT_OVERRIDE = os.environ.get("SGB_BRIDGE_ROOT")
@@ -45,9 +49,8 @@ ROOT = Path(_ROOT_OVERRIDE) if _ROOT_OVERRIDE else Path(__file__).resolve().pare
 DOCS_DIR = ROOT / "docs"
 STATE_FILE = ROOT / "state" / "seen_ids.json"
 
-# Loop mode
+# Loop mode (delta-only; full sync otomatik calismaz, ilk bootstrap elle yapilir)
 LOOP_DELTA_INTERVAL = int(os.environ.get("SGB_BRIDGE_DELTA_INTERVAL_SEC", "3600"))
-LOOP_FULL_INTERVAL_DAYS = int(os.environ.get("SGB_BRIDGE_FULL_INTERVAL_DAYS", "7"))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -429,43 +432,29 @@ def sync(mode: str) -> None:
         write_badge(state)
 
 
-def should_run_full(state: dict) -> bool:
-    """Loop mode'da full sync gerekiyor mu? Hicbir tipte last_full_sync yoksa veya
-    en eski full LOOP_FULL_INTERVAL_DAYS'den eskise True."""
-    oldest = None
-    for t in TYPES:
-        v = state.get(t, {}).get("last_full_sync")
-        if not v:
-            return True
-        try:
-            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except Exception:
-            return True
-        if oldest is None or dt < oldest:
-            oldest = dt
-    if oldest is None:
-        return True
-    age = datetime.now(timezone.utc) - oldest
-    return age >= timedelta(days=LOOP_FULL_INTERVAL_DAYS)
-
-
 def loop() -> None:
-    """Cron'suz container'lar icin: delta'yi LOOP_DELTA_INTERVAL'da, full'u haftada bir tetikle."""
-    log.info(
-        f"LOOP basliyor (v{__version__}) - delta her {LOOP_DELTA_INTERVAL}s, "
-        f"full her {LOOP_FULL_INTERVAL_DAYS} gun"
-    )
+    """Cron'suz container'lar icin: delta'yi LOOP_DELTA_INTERVAL'da surekli tetikler.
+
+    Full sync OTOMATIK CALISMAZ. Ilk bootstrap iki yoldan biriyle saglanir:
+      1. Imaja gomulu seed verisi (docs/ + state/ build aninda kopyalanir), veya
+      2. Bir kez elle `python sync.py --mode full` calistirilmasi.
+    """
+    log.info(f"LOOP basliyor (v{__version__}) - delta her {LOOP_DELTA_INTERVAL}s")
+    state = load_state()
+    if all(int(state.get(t, {}).get("max_id") or 0) == 0 for t in TYPES):
+        log.warning(
+            "DIKKAT: state bos (tum max_id=0). Delta sinirli bir bootstrap yapacak "
+            f"(en fazla {DELTA_MAX_PAGES} sayfa/tip). Tam gecmis veri icin once "
+            "`--mode full` calistir ya da seed verili imaj kullan."
+        )
     while True:
         try:
-            state = load_state()
-            mode = "full" if should_run_full(state) else "delta"
-            log.info(f"loop: {mode} tetikleniyor")
-            sync(mode)
+            sync("delta")
         except KeyboardInterrupt:
             log.info("KeyboardInterrupt - cikiliyor")
             return
         except Exception:
-            log.exception("loop iterasyonu sirasinda hata - devam ediyor")
+            log.exception("loop delta sirasinda hata - devam ediyor")
         log.info(f"loop: {LOOP_DELTA_INTERVAL}s uyuyor")
         try:
             time.sleep(LOOP_DELTA_INTERVAL)

@@ -7,10 +7,12 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - cronjob-delta.yaml
-  - cronjob-full.yaml
   - deployment.yaml
   - service.yaml
   # - ingress.yaml.example    # Ingress'i kullanmak istersen yorum'u ac
+  #
+  # job-full.yaml KASITLI olarak burada DEGIL — tek seferlik manuel bootstrap icin.
+  # Gerekirse elle uygula: kubectl apply -f k8s/job-full.yaml
 
 # Image tag'i merkezi ayarla
 images:

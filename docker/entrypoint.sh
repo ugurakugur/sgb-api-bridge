@@ -13,14 +13,24 @@ set -e
 MODE="${1:-all-in-one}"
 shift 2>/dev/null || true
 
+DATA_ROOT="${SGB_BRIDGE_ROOT:-/data}"
+
 # Veri dizinleri yoksa olustur
-mkdir -p "${SGB_BRIDGE_ROOT:-/data}/docs" "${SGB_BRIDGE_ROOT:-/data}/state"
+mkdir -p "$DATA_ROOT/docs" "$DATA_ROOT/state"
+
+# Seed: volume/PVC bos ise imaja gomulu gecmis veriyi kopyala.
+# Boylece fresh container full sync'e gerek kalmadan delta'dan devam eder.
+# -n (no-clobber): mevcut volume verisinin uzerine asla yazmaz.
+if [ ! -f "$DATA_ROOT/state/seen_ids.json" ] && [ -d /app/seed ]; then
+  echo "[entrypoint] $DATA_ROOT bos - imajdaki seed verisi kopyalaniyor"
+  cp -rn /app/seed/docs/. "$DATA_ROOT/docs/" 2>/dev/null || true
+  cp -rn /app/seed/state/. "$DATA_ROOT/state/" 2>/dev/null || true
+  echo "[entrypoint] seed tamamlandi"
+fi
 
 case "$MODE" in
   all-in-one)
-    echo "[entrypoint] all-in-one mode: nginx + python loop"
-    # Initial bootstrap'i da yapsin diye sync once delta tetikleyelim;
-    # docs/ tamamen bossa nginx 404 doner. Loop modu kendi basina full'a karar verir.
+    echo "[entrypoint] all-in-one mode: nginx + python loop (delta)"
     nginx
     exec python /app/sync.py --mode loop
     ;;

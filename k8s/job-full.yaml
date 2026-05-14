@@ -1,0 +1,49 @@
+# Tek seferlik full sync (Job, CronJob DEGIL).
+#
+# Normal calismada GEREKLI DEGIL — imaj seed verisiyle gelir, delta CronJob'i
+# gecmis veriden devam eder. Bu manifest yalnizca su durumlarda kullanilir:
+#   - Sifirdan tamamen yeni bir veri seti cekmek istiyorsan
+#   - Seed verisi cok bayatladiysa ve delta yetisemiyorsa
+#
+# Calistir:
+#   kubectl apply -f k8s/job-full.yaml
+#   kubectl -n sgb-api-bridge logs -f job/sgb-sync-full
+#
+# Bitince temizle (yeniden calistirmak istersen once silmen gerekir):
+#   kubectl -n sgb-api-bridge delete job sgb-sync-full
+#
+# Not: restartPolicy OnFailure + backoffLimit ile, sync resume destekli oldugu
+# icin pod oldurulurse bir sonraki deneme kaldigi sayfadan devam eder.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sgb-sync-full
+  namespace: sgb-api-bridge
+spec:
+  activeDeadlineSeconds: 54000   # 15 saat
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: ghcr.io/bilsectr/sgb-api-bridge:latest
+          imagePullPolicy: IfNotPresent
+          args: ["sync-once", "full"]
+          env:
+            - name: SGB_BRIDGE_ROOT
+              value: /data
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sgb-data

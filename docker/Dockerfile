@@ -36,9 +36,15 @@ COPY scripts/sync.py /app/sync.py
 COPY docker/nginx.conf /etc/nginx/conf.d/sgb-api-bridge.conf
 COPY docker/entrypoint.sh /entrypoint.sh
 
+# Seed verisi: repo'daki gecmis feed'ler + state imaja gomulur.
+# Fresh bir container (bos volume/PVC) ilk acilista bunu /data'ya kopyalar,
+# boylece full sync'e gerek kalmadan delta dogru max_id'den devam eder.
+COPY docs /app/seed/docs
+COPY state /app/seed/state
+
 RUN chmod +x /entrypoint.sh \
  && mkdir -p /data/docs /data/state \
- && chown -R www-data:www-data /data \
+ && chown -R www-data:www-data /data /app/seed \
  && ln -sf /dev/stdout /var/log/nginx/access.log \
  && ln -sf /dev/stderr /var/log/nginx/error.log \
  # Nginx PID dosyasini www-data yazabilsin

@@ -1,8 +1,8 @@
 # Tek konteyner ile her sey: docker compose up -d
 #
 # Bu compose dosyasi all-in-one calistirir. Sync ve serve ayni konteyner'da.
-# Ilk full bootstrap'in 6-10 saat surebilecegini unutma — `docker logs -f sgb-api-bridge`
-# ile izleyebilirsin.
+# Imaj gecmis feed verisini gomulu tasir; ilk acilista hemen kullanilabilir.
+# Internal loop her saat delta sync calistirir. Full sync GEREKMEZ.
 #
 # Veri /data volume'unda kalir (state + feed'ler). Konteyner'i silsen bile veri yasar.
 
@@ -18,8 +18,8 @@ services:
     environment:
       # Opsiyonel: delta sikligini saniye cinsinden override (default 3600)
       # SGB_BRIDGE_DELTA_INTERVAL_SEC: "3600"
-      # Opsiyonel: full sync sikligi gun cinsinden (default 7)
-      # SGB_BRIDGE_FULL_INTERVAL_DAYS: "7"
+      # Opsiyonel: delta'nin tek seferde gezecegi maks. sayfa (default 1000)
+      # SGB_BRIDGE_DELTA_MAX_PAGES: "1000"
       TZ: "Europe/Istanbul"
 
 volumes:

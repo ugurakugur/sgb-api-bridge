@@ -8,6 +8,11 @@ on:
       - 'scripts/sync.py'
       - '.github/workflows/release.yml'
     tags: ['v*']
+  # Haftalik rebuild: imaja gomulu seed verisi (docs/ + state/) taze kalsin.
+  # Boylece fresh Docker/K8s kurulumlari en fazla 1 hafta bayat veriyle baslar,
+  # delta cap'i (DELTA_MAX_PAGES) bu bosluğu rahat kapatir.
+  schedule:
+    - cron: '0 4 * * 1'   # Pazartesi 04:00 UTC
   workflow_dispatch:
 
 permissions:

@@ -5,7 +5,7 @@ Bu rehber, projeyi kurumun kendi GitLab sunucusuna klonlayıp tamamen offline (i
 ## Önkoşullar
 
 - Self-hosted GitLab CE/EE (12.0+)
-- En az bir GitLab Runner (shell veya docker executor). Full sync 6-10 saat sürebileceği için runner'ın `timeout` ayarı yeterli olmalı (`/etc/gitlab-runner/config.toml` içinde `timeout = 36000` gibi).
+- En az bir GitLab Runner (shell veya docker executor). Normal çalışmada delta sync birkaç dakika sürer; yalnızca elle full sync çalıştıracaksan runner `timeout`'u yeterli olmalı (`/etc/gitlab-runner/config.toml` içinde `timeout = 54000` gibi).
 - Runner'ın SGB API'sine (`https://siberguvenlik.gov.tr`) çıkışı olmalı. Kurumsal proxy varsa `HTTPS_PROXY` env değişkeni runner config'ine eklenmeli.
 
 ## 1. Repo'yu klonla
@@ -35,7 +35,7 @@ CI'nin commit/push yapabilmesi için bir token gerekiyor:
 4. **Mask variable**: ✓
 5. **Protect variable**: ✓ (sadece protected branch'lerden erişilebilir; default branch protected olmalı)
 
-## 4. Pipeline Schedule'ları ekle
+## 4. Pipeline Schedule ekle (sadece delta)
 
 Proje → **Build** → **Pipeline schedules** → **New schedule**
 
@@ -45,21 +45,17 @@ Proje → **Build** → **Pipeline schedules** → **New schedule**
 - Target Branch: `main`
 - Variables: `SYNC_MODE` = `delta`
 
-**Full (haftalık):**
-- Description: `SGB full sync`
-- Interval Pattern: `0 3 * * 0`
-- Target Branch: `main`
-- Variables: `SYNC_MODE` = `full`
+> **Full sync için schedule kurma.** Full sync 15+ saat sürdüğü için zamanlı çalışmaz. Repo geçmiş veriyi zaten içerir; delta bu noktadan devam eder.
 
-## 5. İlk full sync'i manuel tetikle
+## 5. (Opsiyonel) İlk full sync'i manuel tetikle
 
-İki yöntem:
+Bu adım **çoğu durumda gerekmez** — klonladığın repo `docs/*-list.txt` ve `state/seen_ids.json` dosyalarını hazır taşır, delta direkt çalışır.
 
-**A) UI'dan:** Build → Pipeline schedules → Full sync'in yanındaki "Play" butonuna bas.
+Yalnızca sıfırdan tam yeni bir veri seti çekmek istersen:
 
-**B) CLI ile:** Build → Pipelines → **Run pipeline** → branch `main` → variable `SYNC_MODE=full` → Run.
+Build → Pipelines → **Run pipeline** → branch `main` → variable `SYNC_MODE=full` → **Run**.
 
-İlk full sync ~5-10 saat sürer. Runner timeout'a takılırsa son aşamada otomatik yeni pipeline tetiklenir (zincir devam eder). 1-2 zincir sonra `docs/*.txt` dosyaları dolu olur.
+Full sync ~10-15+ saat sürer. Runner timeout'a takılırsa son aşamada otomatik yeni pipeline tetiklenir (zincir devam eder). 1-2 zincir sonra `docs/*.txt` dosyaları tamamen dolu olur.
 
 ## 6. Repo görünürlüğü ve feed URL'leri
 

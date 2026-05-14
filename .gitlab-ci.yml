@@ -61,12 +61,14 @@ sync:delta:
   timeout: 30m
   resource_group: sgb-sync
 
-# ---- Full sync: haftalik + manuel ----
+# ---- Full sync: YALNIZCA manuel (ilk bootstrap / sifirdan re-sync) ----
+# Haftalik schedule YOK — SGB full sync'i 15+ saat surdugu icin pratik degil.
+# Repo gecmis veriyi zaten icerir; normal calismada sadece delta yeterli.
+# Calistirmak icin: Build -> Pipelines -> Run pipeline -> SYNC_MODE=full
 sync:full:
   stage: sync
   image: python:3.11-slim
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" && $SYNC_MODE == "full"'
     - if: '$CI_PIPELINE_SOURCE == "web" && $SYNC_MODE == "full"'
   <<: *push_setup
   script:

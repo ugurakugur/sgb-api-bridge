@@ -18,11 +18,11 @@ k8s/
 ├── kustomization.yaml
 ├── namespace.yaml
 ├── pvc.yaml                   # /data icin 1Gi PVC (RWO)
-├── cronjob-delta.yaml         # saatte bir (:23)
-├── cronjob-full.yaml          # Pazar 03:00 UTC
+├── cronjob-delta.yaml         # saatte bir (:23)  -- TEK zamanli is
 ├── deployment.yaml            # nginx serve (replicas=1)
 ├── service.yaml               # ClusterIP :80
-└── ingress.yaml.example       # opsiyonel
+├── ingress.yaml.example       # opsiyonel
+└── job-full.yaml              # tek seferlik manuel bootstrap (kustomize'a DAHIL DEGIL)
 ```
 
 ## Kurulum
@@ -39,21 +39,30 @@ Veya bash ile direkt:
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/pvc.yaml
 kubectl apply -f k8s/cronjob-delta.yaml
-kubectl apply -f k8s/cronjob-full.yaml
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 ```
 
-## İlk bootstrap
+## Bootstrap — genelde gerekmez
 
-CronJob'lar tetiklendiğinde çalışır. İlk full sync'in hemen başlamasını istersen elle Job oluştur:
+İmaj, geçmiş feed verisini (`docs/*-list.txt` + `state/seen_ids.json`) **gömülü taşır**. İlk container açıldığında bu seed verisi boş PVC'ye otomatik kopyalanır (entrypoint hallediyor). Yani:
+
+- Delta CronJob ilk çalıştığında seed verisindeki `max_id`'den devam eder.
+- Serve Deployment'ı anında dolu feed'leri sunar.
+- **Full sync'e gerek yoktur.**
+
+### Sıfırdan tam re-sync (nadir)
+
+Yalnızca tamamen yeni bir veri seti çekmek istersen `job-full.yaml`'ı elle uygula (kustomize'a dahil **değil**):
 
 ```bash
-kubectl -n sgb-api-bridge create job --from=cronjob/sgb-sync-full bootstrap
-kubectl -n sgb-api-bridge logs -f job/bootstrap
+kubectl apply -f k8s/job-full.yaml
+kubectl -n sgb-api-bridge logs -f job/sgb-sync-full
+# Bitince:
+kubectl -n sgb-api-bridge delete job sgb-sync-full
 ```
 
-Full sync 5-10 saat sürer. `activeDeadlineSeconds: 36000` (10h) ile sınırlı; takılırsa pod öldürülür, ama state ve partial dosyalar PVC'de kalır. Bir sonraki run resume eder.
+Full sync ~10-15+ saat sürer. `activeDeadlineSeconds: 54000` (15h) ile sınırlı; resume destekli olduğu için pod öldürülse de bir sonraki deneme kaldığı sayfadan devam eder.
 
 ## Feed'lere erişim
 
@@ -88,7 +97,7 @@ Veya `kustomization.yaml` içinde Ingress satırını yorumdan çıkar.
 
 ### Schedule değiştirme
 
-`cronjob-delta.yaml` / `cronjob-full.yaml` içindeki `schedule:` alanını değiştir. Tüm CronJob spec'i.
+`cronjob-delta.yaml` içindeki `schedule:` alanını değiştir (tek zamanlı iş budur).
 
 ### İmaj tag'i sabitleme
 
@@ -158,7 +167,7 @@ kubectl -n sgb-api-bridge exec deploy/sgb-serve -- cat /data/docs/stats.json
 - **PVC `Pending`**: cluster'ın default StorageClass'ı yok ya da PV provisioner çalışmıyor. `kubectl get storageclass` ile kontrol et, `pvc.yaml`'a `storageClassName:` ekle.
 - **CronJob hiç çalışmıyor**: cluster saat dilimi UTC mi yoksa local mi? `kubectl describe cronjob/sgb-sync-delta` ile `Last Schedule Time` bak. v1.27+ ise `spec.timeZone` set edilebilir.
 - **Pod `CrashLoopBackOff`**: `kubectl logs <pod>` ile incele. Tipik sebep: SGB API'ye erişim yok veya PVC'de yer kalmadı.
-- **404 dönüyor**: full sync henüz bitmemiş. `kubectl exec deploy/sgb-serve -- ls -la /data/docs` ile dosyaları kontrol et.
+- **404 dönüyor**: seed verisi PVC'ye kopyalanmamış olabilir. `kubectl exec deploy/sgb-serve -- ls -la /data/docs` ile kontrol et. Boşsa: PVC mount'u veya entrypoint seed adımı çalışmamış — pod loglarına bak (`[entrypoint] seed tamamlandi` satırı görünmeli).
 - **Deployment `0/1 ready` Recreate'te takıldı**: PVC RWO ise CronJob pod'u ile Deployment pod'u aynı node'da olmalı. Multi-node cluster'da node affinity ekle veya RWX PVC kullan.
 
 ## Helm chart?

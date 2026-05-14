@@ -25,20 +25,22 @@ Repo → **Settings** → **Pages**:
 - Branch: `main` / folder: `/docs`
 - **Save**
 
-## 3. İlk full sync'i tetikle
+## 3. Delta sync'i etkinleştir
 
-Repo → **Actions** → **Sync (full, weekly)** → **Run workflow** → branch `main` → **Run workflow**.
+Bu repo'yu fork ettiysen `docs/*-list.txt` ve `state/seen_ids.json` zaten dolu gelir — **full sync çalıştırman gerekmez.** Delta workflow'u (`Sync (delta, hourly)`) saatte bir otomatik çalışıp geçmiş veriden devam eder.
 
-İlk full sync ~5-10 saat sürer. SGB rate-limit'i nedeniyle workflow runner timeout'a takılabilir; bu durumda son adım otomatik olarak yeni workflow tetikler ve resume eder. 1-2 zincir sonra `docs/*.txt` dolar.
+İlk delta'yı hemen tetiklemek istersen: Repo → **Actions** → **Sync (delta, hourly)** → **Run workflow**.
 
-İlerlemeyi izle: Actions sekmesi → çalışan workflow → `Run python scripts/sync.py --mode full` adımındaki canlı log.
+### (Opsiyonel) Sıfırdan tam re-sync
+
+Yalnızca tamamen yeni bir veri seti çekmek istersen: Repo → **Actions** → **Sync (full, manual bootstrap only)** → **Run workflow** → branch `main`.
+
+Full sync ~10-15+ saat sürer. SGB rate-limit'i nedeniyle runner timeout'a takılabilir; son adım otomatik olarak yeni workflow tetikler ve resume eder. 1-2 zincir sonra `docs/*.txt` tamamen dolar. Zamanlı/haftalık çalışmaz — tek seferlik manuel iştir.
 
 ## 4. Doğrulama
 
-Birinci full sync zinciri tamamen bittiğinde:
-
 - `https://<USERNAME>.github.io/sgb-api-bridge/` → landing açılır
-- `https://<USERNAME>.github.io/sgb-api-bridge/stats.json` → `last_update_utc` dolu, `in_progress` null
+- `https://<USERNAME>.github.io/sgb-api-bridge/stats.json` → `last_update_utc` taze, `in_progress` null
 - `https://<USERNAME>.github.io/sgb-api-bridge/domain-list.txt` → ~450K satır
 
 ## 5. README ve index.html'de URL'leri güncelle

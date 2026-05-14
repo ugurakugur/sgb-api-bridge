@@ -1,8 +1,9 @@
-name: Sync (full, weekly)
+# Full sync YALNIZCA elle tetiklenir — ilk bootstrap veya sifirdan tam re-sync icin.
+# Normal calismada gerekli degil: repo gecmis veriyi zaten icerir, delta workflow devam eder.
+# (USOM/SGB full sync'i 15+ saat surdugu icin haftalik cron kaldirildi.)
+name: Sync (full, manual bootstrap only)
 
 on:
-  schedule:
-    - cron: '0 3 * * 0'
   workflow_dispatch:
 
 permissions:
