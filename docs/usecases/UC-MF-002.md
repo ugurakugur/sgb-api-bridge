@@ -43,7 +43,7 @@ güvenilirlikli sinyaldir; otomatik host isolation tetiklenebilir.
 | Connectiontype | MF (composite) |
 | Severity (base) | 8 |
 | Veri kaynakları | EDR (file_create + process_network) + opsiyonel Proxy |
-| Reference / lookup | `SGB_MF_DOMAIN`, `SGB_MF_IP`, `SGB_MF_URL` |
+| TAXII koleksiyonu | `sgb-malware-download` (legacy reference set: `SGB_MF_DOMAIN`, `SGB_MF_IP`, `SGB_MF_URL`) |
 | Response | PB-MF-002 (auto-isolate + forensic snapshot + IR) |
 
 ## Tespit mantığı

@@ -47,7 +47,7 @@ parçasıdır.
 | Connectiontype | XX (meta) |
 | Severity (base) | 8 (tek CT severity'lerini override) |
 | Veri kaynakları | UC-PH/BC/AC/EK/MF/MM/MC çıktıları aggregate |
-| Reference / lookup | `SGB_*_MAP` (CT bilgisi) |
+| TAXII koleksiyonu | (birden fazla - UC icerigine gore sgb-* koleksiyonlari) (legacy reference set: `SGB_*_MAP` (CT bilgisi)) |
 
 ## Tespit mantığı
 

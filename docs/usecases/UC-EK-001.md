@@ -47,7 +47,7 @@ UC-EK-002 ile birlikte: IDS'in exploit alarmı + SGB EK URL = composite
 | Connectiontype | EK |
 | Severity (base) | 8 |
 | Veri kaynakları | Web proxy / SWG, browser EDR telemetry |
-| Reference / lookup | `SGB_EK_URL`, `SGB_EK_DOMAIN`, `SGB_URL_MAP` |
+| TAXII koleksiyonu | `sgb-exploit-kit` (legacy reference set: `SGB_EK_URL`, `SGB_EK_DOMAIN`, `SGB_URL_MAP`) |
 | Response | PB-EK-001 (EDR full scan + browser process inspection) |
 
 ## Tespit mantığı

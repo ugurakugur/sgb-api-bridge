@@ -50,7 +50,7 @@ için UC-MF-002.
 | Connectiontype | MF |
 | Severity (base) | 7 |
 | Veri kaynakları | Web proxy / SWG |
-| Reference / lookup | `SGB_MF_URL`, `SGB_MF_DOMAIN`, `SGB_URL_MAP` |
+| TAXII koleksiyonu | `sgb-malware-download` (legacy reference set: `SGB_MF_URL`, `SGB_MF_DOMAIN`, `SGB_URL_MAP`) |
 | Response | PB-MF-001 (EDR scan + dosya karantinaya alma) |
 
 ## Tespit mantığı

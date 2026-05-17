@@ -40,7 +40,7 @@ kaldırabiliriz; cihazı retire-trigger ile sıfırlayabiliriz.
 | Connectiontype | MC |
 | Severity (base) | 7 |
 | Veri kaynakları | MDM app telemetry (Intune, Workspace ONE), MTD (Lookout, Zimperium) |
-| Reference / lookup | `SGB_MC_DOMAIN`, `SGB_MC_IP` |
+| TAXII koleksiyonu | `sgb-mobile-cc` (legacy reference set: `SGB_MC_DOMAIN`, `SGB_MC_IP`) |
 | Response | PB-MC-002 (MDM app blacklist + device retire trigger) |
 
 ## Tespit mantığı

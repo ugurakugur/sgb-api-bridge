@@ -46,7 +46,7 @@ Bu kombinasyon SOC için "false positive değil, gerçek bot" kanıtıdır.
 | Connectiontype | BC |
 | Severity (base) | 8 |
 | Veri kaynakları | NetFlow v5/v9, sFlow, IPFIX, firewall flow log |
-| Reference / lookup | `SGB_BC_IP` |
+| TAXII koleksiyonu | `sgb-botnet-cc` (legacy reference set: `SGB_BC_IP`) |
 | Response | PB-BC-003 (host isolation + memory dump + IR) |
 
 ## Tespit mantığı

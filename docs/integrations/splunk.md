@@ -1,190 +1,148 @@
 # Entegrasyon: Splunk Enterprise / Cloud
 
-> **Hedef:** `TA-sgb-threatintel` app'i kurulsun; `src_ip`, `dest_ip`,
-> `query`, `url` alanları otomatik zenginleştirilsin; 3 başlangıç alarm
-> aktif; dashboard görüntülensin.
+> **Hedef:** SGB TAXII koleksiyonları Splunk'a ingest edilsin; `src_ip`,
+> `dest_ip`, `query`, `url` alanları otomatik zenginleştirilsin; 3 başlangıç
+> alarm aktif.
 
-**Tüketilen artifact:** `siem/splunk/out/TA-sgb-threatintel.tar.gz`
+**Tüketilen servis:** `https://sgb-taxii.bilsec.tr/taxii2/` (anonim, TAXII 2.1)
 
 ## BG Rehberi karşılığı
 
 | Madde | Madde adı | Bu entegrasyon nasıl karşılar? |
 |-------|-----------|--------------------------------|
 | **3.1.8.6** | Merkezi Kayıt Yönetimi | Splunk merkezi log platformudur. |
-| **3.1.8.7** ⭐ | Kayıt Analizi Araçları (SIEM) | TA + saved searches = SIEM korelasyon. |
-| **3.1.8.8** | SIEM Düzenli Yapılandırma | Saatlik lookup refresh + FP tuning. |
-| **3.1.10.4** ⭐ | Siber Tehdit Bildirimlerinin Yönetilmesi | SGB feed → Splunk lookup. |
-| **3.1.5.1** | Zararlı Yazılımdan Korunma | Lookup tabanlı zararlı IoC eşleştirme. |
+| **3.1.8.7** ⭐ | Kayıt Analizi Araçları (SIEM) | TAXII feed + correlation search = SIEM korelasyon. |
+| **3.1.8.8** | SIEM Düzenli Yapılandırma | Saatlik TAXII polling + FP tuning. |
+| **3.1.10.4** ⭐ | Siber Tehdit Bildirimlerinin Yönetilmesi | SGB feed → Splunk Threat Intel Framework. |
+| **3.1.5.1** | Zararlı Yazılımdan Korunma | TAXII-tabanlı zararlı IoC eşleştirme. |
 
 ## Ön koşullar
 
-- Splunk Enterprise 8.x / 9.x veya Splunk Cloud (Victoria/Classic)
-- Admin yetkisi (`admin` veya `sc_admin` role)
-- Search heads + indexer'larda app deploy izni
-- Python 3.10+ (builder host'unda)
+Splunk dağıtımına göre iki seçenek:
 
-## Adım 1 — TA paketini üret
+- **Splunk Enterprise Security (ES)** — Threat Intelligence Manager (built-in)
+- **Splunk Core / Cloud (ES'siz)** — `Splunk Add-on for STIX/TAXII` veya
+  `taxii2://` modular input (community/Splunkbase app)
 
-```bash
-python scripts/sync.py --mode full   # DB doldur (bir kez)
-python scripts/build_splunk_ta.py
-# Çıktı:
-#   siem/splunk/out/TA-sgb-threatintel/         (raw dizin)
-#   siem/splunk/out/TA-sgb-threatintel.tar.gz   (deploy artifact)
-#   siem/splunk/out/manifest.json
-```
+Her iki yol için:
 
-Manifest'te lookup count'ları + tarball SHA256 var.
+- Splunk 8.x / 9.x veya Splunk Cloud (Victoria/Classic)
+- Admin yetkisi
+- Search head'lerden `sgb-taxii.bilsec.tr:443` erişimi
 
-## Adım 2 — Splunk'a yükle
+## Yöntem A — Splunk Enterprise Security (önerilen)
 
-### Enterprise (on-prem)
+ES'in **Threat Intelligence Manager**'ı native TAXII 2.0/2.1 destekler.
 
-```bash
-# CLI
-$SPLUNK_HOME/bin/splunk install app siem/splunk/out/TA-sgb-threatintel.tar.gz \
-  -auth admin:****
-$SPLUNK_HOME/bin/splunk restart
-```
+**Configure → Data Enrichment → Threat Intelligence Management → New**
 
-Veya UI: **Apps > Manage Apps > Install app from file** → tarball'ı seç.
+| Alan | Değer (örnek) |
+|------|---------------|
+| Type | `taxii2` |
+| Name | `SGB-Phishing` |
+| Discovery URL | `https://sgb-taxii.bilsec.tr/taxii2/` |
+| Collection | `sgb-phishing` |
+| Polling interval (sec) | `3600` |
+| Username/Password | boş |
 
-### Search Head Cluster (SHC)
+Tüm koleksiyonlar için tekrarla (8 feed). ES otomatik olarak STIX
+indicator'larını **threat_intel_collection** KV Store'una yazar; tüm
+"Threat Intelligence" correlation search'ler bu collection'ı sorgular.
 
-Deployer host'una kopyala:
-
-```bash
-scp siem/splunk/out/TA-sgb-threatintel.tar.gz deployer:/tmp/
-ssh deployer "tar -xzf /tmp/TA-sgb-threatintel.tar.gz -C \$SPLUNK_HOME/etc/shcluster/apps/"
-ssh deployer "\$SPLUNK_HOME/bin/splunk apply shcluster-bundle -target https://shc-captain:8089"
-```
-
-### Splunk Cloud
-
-UI > **Apps > Browse more apps** → "Install app from file" (private app
-upload). ACS API ile programatik upload da mümkün.
-
-## Adım 3 — Lookup yüklemesini doğrula
+Doğrulama:
 
 ```spl
-| inputlookup sgb_ip_lookup | stats count
-| inputlookup sgb_domain_lookup | stats count
-| inputlookup sgb_url_lookup | stats count
+| `threatintel_lookup`
+| search threat_match_field IN ("src_ip","dest_ip","query","url")
+| where threat_group="SGB-Phishing"
+| stats count by threat_match_value, threat_collection
 ```
 
-Beklenen: `~14K`, `~450K`, `~7K` (canlı SGB veri büyüklüklerine yakın).
+## Yöntem B — Splunk Core / Cloud (`taxii2://` modular input)
 
-## Adım 4 — Otomatik lookup'ı sına
-
-```spl
-sourcetype=dns earliest=-15m
-| eval test_query="evilbotnet.example"
-| lookup sgb_domain_lookup value AS test_query OUTPUT connectiontype
-```
-
-Önlü test: kasıtlı zararlı bir domain (örneğin SGB feed'inden alınmış bir
-phishing domain) ile DNS sorgu log'u üretip rule'un tetiklenmesini görmek.
-
-`props.conf [default]` kapsamı geniş; ortamınızda hacim yüksekse sourcetype
-özelinde override edin:
+ES'siz ortamda `Splunk Add-on for STIX/TAXII` (Splunkbase) veya muadili
+TAXII2 modular input app'i kullanın.
 
 ```ini
-# local/props.conf
-[sourcetype::pan:traffic]
-LOOKUP-sgb_dest_ip = sgb_ip_lookup value AS dest_ip OUTPUTNEW connectiontype AS sgb_dest_ct ...
-# [default] LOOKUP-* satırlarını kaldırın
+# $SPLUNK_HOME/etc/apps/Splunk_TA_stix-taxii/local/inputs.conf
+[taxii2://SGB-Phishing]
+discovery_url = https://sgb-taxii.bilsec.tr/taxii2/
+collection = sgb-phishing
+polling_interval = 3600
+index = threat_intel
+sourcetype = stix:indicator
+
+[taxii2://SGB-Botnet-CC]
+discovery_url = https://sgb-taxii.bilsec.tr/taxii2/
+collection = sgb-botnet-cc
+polling_interval = 3600
+index = threat_intel
+sourcetype = stix:indicator
+
+# … sgb-apt-cc, sgb-exploit-kit, sgb-malware-download, sgb-mining,
+#    sgb-mobile-cc, sgb-other için aynı şablon
 ```
 
-## Adım 5 — Saved search'ler ve dashboard
+Restart sonrası `index=threat_intel sourcetype=stix:indicator` ile ingest
+doğrulayın.
 
-`Apps > SGB Threat Intel` ana sayfası açılır.
+## Adım — Otomatik enrichment
 
-- **Dashboard:** SGB Threat Intel Overview (`sgb_overview.xml`)
-- **Saved searches:** Settings > Searches, reports, and alerts → "SGB - UC-*"
-
-Saved search isimleri Use Case ID'leri ile eşleşir:
-
-- `SGB - UC-PH-001 - Phishing DNS query`
-- `SGB - UC-BC-001 - Botnet C2 outbound`
-- `SGB - UC-AC-001 - APT C2 match`
-- vb.
-
-İlk kurulumda alarm gürültü yaparsa `enableSched=0` ile geçici devre dışı:
-
-```bash
-# local/savedsearches.conf
-[SGB - UC-PH-001 - Phishing DNS query]
-enableSched = 0
-```
-
-## Adım 6 — Periyodik lookup refresh (restart-suz)
-
-Yalnız lookup CSV'leri değişirse Splunk restart gerekmez:
-
-```bash
-python scripts/sync.py --mode delta
-python scripts/build_splunk_ta.py
-rsync -av siem/splunk/out/TA-sgb-threatintel/lookups/ \
-  splunk-sh:$SPLUNK_HOME/etc/apps/TA-sgb-threatintel/lookups/
-```
-
-SHC için: deployer'a tüm tarball'ı tekrar push'la (app bundle re-deploy
-yapmaz lookup'ı otomatik update etmez).
-
-Cron:
-
-```cron
-27 * * * * cd /opt/sgb && python scripts/sync.py --mode delta && \
-           python scripts/build_splunk_ta.py && \
-           rsync -aq siem/splunk/out/TA-sgb-threatintel/lookups/ \
-             splunk-sh:$SPLUNK_HOME/etc/apps/TA-sgb-threatintel/lookups/
-```
-
-## Adım 7 — Enterprise Security (ES) entegrasyonu
-
-ES varsa SGB lookup'larını **KV Store collection** olarak yüklemek +
-**Threat Intelligence Framework**'e kaydetmek daha güçlü:
-
-```ini
-# local/collections.conf
-[sgb_ip_intel]
-enforceTypes = true
-
-# local/transforms.conf
-[sgb_ip_intel_collection]
-external_type = kvstore
-collection = sgb_ip_intel
-fields_list = _key, value, connectiontype, description, criticality_level, source, first_seen_utc
-
-# local/local_ip_intel.conf
-[default]
-ipv4_address = value
-description = description
-threat_key = connectiontype
-weight = criticality_level
-```
-
-CSV → KV Store yükleme:
+ES'te Threat Intel Manager indicator'ları otomatik olarak event'lerle
+match'ler (Adaptive Response: `threat_match`). Custom search ile:
 
 ```spl
-| inputlookup sgb_ip_lookup
-| outputlookup sgb_ip_intel_collection
+sourcetype=dns earliest=-1h
+| lookup local_domain_intel domain AS query OUTPUT threat_group, threat_key
+| where isnotnull(threat_group) AND threat_group LIKE "SGB-%"
+| stats count by src_ip, query, threat_group, threat_key
 ```
+
+ES'siz ortamda manuel lookup üretimi için STIX indicator'ları
+`x_sgb_value` field'ından çıkarın:
+
+```spl
+index=threat_intel sourcetype=stix:indicator x_sgb_connectiontype="PH"
+| spath x_sgb_value output=value
+| spath x_sgb_criticality output=criticality
+| outputlookup sgb_phishing_lookup
+```
+
+Bu lookup'ı sonra DNS event'larına bağlayın (`lookup sgb_phishing_lookup
+value AS query`).
 
 ## Önerilen başlangıç bundle'ı
 
-| UC | Neden bu? | BG madde |
-|----|-----------|----------|
-| [UC-PH-001](../usecases/UC-PH-001.md) | DNS log + lookup en hızlı POC | 3.1.5.7 |
-| [UC-BC-001](../usecases/UC-BC-001.md) | Firewall log + lookup | 3.1.6.4 |
-| [UC-AC-001](../usecases/UC-AC-001.md) | Kapsamlı APT kuralı | 3.1.10.4 |
+ES tarafında **Use Case Library**'ye 3 correlation search ekleyin
+(adlar UC ID'leriyle eşleşir):
+
+| Saved search adı | UC | BG madde |
+|------------------|----|----------|
+| `SGB - UC-PH-001 - Phishing DNS query` | UC-PH-001 | 3.1.5.7 |
+| `SGB - UC-BC-001 - Botnet C2 outbound` | UC-BC-001 | 3.1.6.4 |
+| `SGB - UC-AC-001 - APT C2 match` | UC-AC-001 | 3.1.10.4 |
+
+Kanonik SPL örnekleri ilgili [UC dosyalarında](../usecases/).
+
+## Periyodik yenileme
+
+Yenileme **otomatiktir** — TAXII client `added_after` ile saatlik polling
+yapar; manuel cron, rsync veya TA rebuild gerekmez. Bayat feed alarmı:
+
+```spl
+| rest /servicesNS/-/-/data/inputs/taxii2
+| search title="SGB-*"
+| eval lag = now() - last_polled
+| where lag > 7200
+| table title, last_polled, lag
+```
 
 ## Troubleshooting
 
 | Belirti | Sebep | Çözüm |
 |---------|-------|-------|
-| App install hata: invalid tarball | Yanlış dizin yapısı | `tarfile.getnames()` ile doğrula; top-level `TA-sgb-threatintel/` olmalı |
-| Lookup hit yok ama search doğru | props.conf yüklenmedi | `btool props list --debug` ile aktif config'i gör |
-| Macro `sgb_severity` bulunamadı | App namespace yanlış | Search'i `app=TA-sgb-threatintel` ile sına |
-| Lookup index'in dışında çalışmıyor | Lookup permission `private` | `default.meta`'da `export = system` |
-| Dashboard boş | Time range dışında | `earliest=-24h` ile sına |
+| Modular input çalışmıyor | App eksik | Splunkbase'den `Splunk Add-on for STIX/TAXII` yükle |
+| ES'te indicator count = 0 | KV Store sync pending | Threat Intelligence Manager'da "Force sync" |
+| Match yok ama search doğru | `local_*_intel.conf` field map | `threat_match_field` doğru property'ye bağlı mı? |
+| Polling 401/403 | (olmamalı, anonim servis) | TAXII URL doğru mu? Trailing slash: `/taxii2/` |
+| Indicator duplicate | Aynı koleksiyon iki input'tan çekiliyor | `inputs.conf`'ta tek tanımı bırak |

@@ -49,7 +49,7 @@ Bu yüzden ticket açılır, haftalık özet raporda yer alır.
 | Connectiontype | MM |
 | Severity (base) | 3 (policy/perf) |
 | Veri kaynakları | Firewall, NetFlow, Proxy, DNS |
-| Reference / lookup | `SGB_MM_IP`, `SGB_MM_DOMAIN`, `SGB_IP_MAP` |
+| TAXII koleksiyonu | `sgb-mining` (legacy reference set: `SGB_MM_IP`, `SGB_MM_DOMAIN`, `SGB_IP_MAP`) |
 | Response | PB-MM-001 (ticket + haftalık raporda yer alır) |
 
 ## Tespit mantığı

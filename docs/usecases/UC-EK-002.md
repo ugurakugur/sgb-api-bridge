@@ -46,7 +46,7 @@ ifadesinin tam karşılığıdır.
 | Connectiontype | EK (composite) |
 | Severity (base) | 9 |
 | Veri kaynakları | IDS/IPS (Snort, Suricata, Palo Alto Threat) + Web proxy |
-| Reference / lookup | `SGB_EK_IP`, `SGB_EK_URL` |
+| TAXII koleksiyonu | `sgb-exploit-kit` (legacy reference set: `SGB_EK_IP`, `SGB_EK_URL`) |
 | Response | PB-EK-002 (host isolation + IR fast track) |
 
 ## Tespit mantığı

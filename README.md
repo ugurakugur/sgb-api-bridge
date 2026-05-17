@@ -4,22 +4,16 @@
 [![Delta sync](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml/badge.svg)](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-SGB (Siber Güvenlik Başkanlığı, eski **USOM** — Ulusal Siber Olaylara Müdahale Merkezi) tehdit beslemesini güvenlik duvarlarının (FortiGate, Sophos, Palo Alto, pfSense, Pi-hole, Squid) doğrudan tüketebileceği **düz metin** formatına dönüştüren açık kaynak proje.
+SGB (Siber Güvenlik Başkanlığı, eski **USOM** — Ulusal Siber Olaylara Müdahale Merkezi) tehdit beslemesini iki farklı tüketim modelinde sunar:
+
+- **Düz metin feed** — güvenlik duvarları için (FortiGate, Sophos, Palo Alto, pfSense, Pi-hole, Squid, MikroTik)
+- **TAXII 2.1 servisi** — SIEM, TIP ve XDR ürünleri için (QRadar, Splunk, Sentinel, MISP, OpenCTI, XSOAR, Falcon, Trellix)
 
 > **Not:** USOM, 2026'da Siber Güvenlik Başkanlığı (SGB) bünyesinde yeniden yapılandırıldı. API uç noktası `www.usom.gov.tr` → `siberguvenlik.gov.tr` olarak değişti. Bu proje yeni endpoint'i kullanır.
 
-Dört farklı dağıtım modelini destekler:
-
-| Model | Senaryo | Kurulum dokümanı |
-|---|---|---|
-| **GitHub Pages** (genel) | Public CDN, sıfır kurulum, herkese açık feed | [docs/setup-github.md](docs/setup-github.md) |
-| **Self-hosted GitLab** | Kurumun kendi GitLab sunucusu; internet'ten bağımsız | [docs/setup-gitlab.md](docs/setup-gitlab.md) |
-| **Docker** | Tek konteyner, "indir-çalıştır-unut" | [docs/setup-docker.md](docs/setup-docker.md) |
-| **Kubernetes** | CronJob + Deployment, kurumsal | [docs/setup-k8s.md](docs/setup-k8s.md) |
-
 ---
 
-## Hızlı başlangıç (GitHub Pages — bu repo)
+## 1) Engelleme — düz metin feed (GitHub Pages, sıfır kurulum)
 
 Aşağıdaki URL'leri firewall'una doğrudan ver:
 
@@ -32,50 +26,75 @@ Aşağıdaki URL'leri firewall'una doğrudan ver:
 | IPv6 subnet | — | `https://bilsectr.github.io/sgb-api-bridge/ip6net-list.txt` |
 | Stats | — | `https://bilsectr.github.io/sgb-api-bridge/stats.json` |
 
-## TAXII 2.1 servisi (SIEM için)
+Cihaz örnekleri (FortiGate, Sophos, Palo Alto, pfSense, Pi-hole, Squid, MikroTik): [docs/index.html](docs/index.html) → "Engelleme" sekmesi.
 
-`connectiontype` bazında STIX 2.1 indicator beslemesi — anonim, kimlik doğrulama yok:
+## 2) İzleme — TAXII 2.1 servisi (SIEM / TIP / XDR)
+
+**Tek URL, kimlik doğrulama yok, anonim public servis:**
 
 ```
 https://sgb-taxii.bilsec.tr/taxii2/
 ```
 
-Koleksiyonlar: `sgb-phishing`, `sgb-botnet-cc`, `sgb-apt-cc`, `sgb-exploit-kit`, `sgb-malware-download`, `sgb-mining`, `sgb-mobile-cc`, `sgb-other`. SIEM use case library'leriyle (`UC-PH-*`, `UC-BC-*`, …) birebir eşleşir. Detay: [docs/setup-taxii.md](docs/setup-taxii.md).
+Koleksiyonlar `connectiontype` bazında ayrılmıştır ve [SIEM use case kütüphanesi](docs/usecases/) ile birebir eşleşir:
 
-## Hızlı başlangıç (Docker)
+| Koleksiyon | İçerik | UC prefix |
+|---|---|---|
+| `sgb-phishing` | Phishing (PH) | `UC-PH-*` |
+| `sgb-botnet-cc` | Botnet C&C (BC) | `UC-BC-*` |
+| `sgb-apt-cc` | APT C&C (AC) | `UC-AC-*` |
+| `sgb-exploit-kit` | Exploit Kit (EK) | `UC-EK-*` |
+| `sgb-malware-download` | Malware Download (MF) | `UC-MF-*` |
+| `sgb-mining` | Cryptomining (MM) | `UC-MM-*` |
+| `sgb-mobile-cc` | Mobile C&C (MC) | `UC-MC-*` |
+| `sgb-other` | Diğer (OT) | `UC-OT-*` |
+
+Her SIEM/TIP ürünü kendi built-in TAXII 2.1 client'ı ile bu URL'yi doğrudan tüketir — özel script, push servisi veya artifact build'i gerekmez. Adım-adım kurulum: [docs/setup-taxii.md](docs/setup-taxii.md). Ürün bazlı detaylı rehberler:
+
+| Ürün | Doküman |
+|---|---|
+| IBM QRadar | [docs/integrations/qradar.md](docs/integrations/qradar.md) |
+| Splunk (ES + Core) | [docs/integrations/splunk.md](docs/integrations/splunk.md) |
+| Microsoft Sentinel | [docs/integrations/sentinel.md](docs/integrations/sentinel.md) |
+| MISP | [docs/integrations/misp.md](docs/integrations/misp.md) |
+| OpenCTI | [docs/integrations/opencti.md](docs/integrations/opencti.md) |
+| Cortex XSOAR, Trellix XDR, Falcon, Elastic, Suricata, Wazuh | [docs/integrations/generic-stix.md](docs/integrations/generic-stix.md) |
+
+## 3) Self-hosting (opsiyonel)
+
+Public servisi kullanmak yerine kendi altyapınızda çalıştırmak isterseniz:
+
+| Model | Senaryo | Kurulum dokümanı |
+|---|---|---|
+| **Docker** | Tek konteyner; firewall feed + TAXII servisi birlikte | [docs/setup-docker.md](docs/setup-docker.md) |
+| **Kubernetes** | CronJob + Deployment, kurumsal | [docs/setup-k8s.md](docs/setup-k8s.md) |
+| **Self-hosted GitLab** | Air-gapped — internet'ten bağımsız mirror | [docs/setup-gitlab.md](docs/setup-gitlab.md) |
+| **GitHub Pages** | Public CDN (bu repo'nun kendisi) | [docs/setup-github.md](docs/setup-github.md) |
 
 ```bash
-docker run -d \
-  --name sgb-api-bridge \
-  -p 8080:80 \
-  -v sgb-api-bridge-data:/data \
-  --restart unless-stopped \
+# Docker — tek satır
+docker run -d --name sgb-api-bridge -p 8080:80 \
+  -v sgb-api-bridge-data:/data --restart unless-stopped \
   ghcr.io/bilsectr/sgb-api-bridge:latest
 ```
-
-Detay: [docs/setup-docker.md](docs/setup-docker.md)
-
-## Hızlı başlangıç (Kubernetes)
-
-```bash
-git clone https://github.com/bilsectr/sgb-api-bridge.git
-kubectl apply -k sgb-api-bridge/k8s/
-```
-
-Detay: [docs/setup-k8s.md](docs/setup-k8s.md)
 
 ---
 
 ## Nasıl çalışır?
 
 - **Delta sync** — saatte bir, SGB API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) yalnız yeni kayıtları çeker (~1-3 dk). **Sürekli çalışan tek mekanizma budur.**
-- **Full sync** — yalnızca **ilk kurulumda bir kez, elle** çalıştırılır (~10-15+ saat). Otomatik/zamanlı çalışmaz. Resume desteklidir; runner timeout'a takılırsa kaldığı yerden devam eder.
+- **TAXII rebuild** — her delta sonrası `build_taxii.py` statik TAXII ağacını (`docs/taxii/`) yeniden üretir; Cloudflare Worker bu ağacı edge'de servis eder.
+- **Full sync** — yalnızca **ilk kurulumda bir kez, elle** çalıştırılır (~10-15+ saat). Otomatik/zamanlı çalışmaz. Resume desteklidir.
 
 SGB API kayıtları tarih sırasına göre newest-first dönüyor ve ID'ler global monoton artıyor. Delta job'ı her tür için `state/seen_ids.json`'daki `max_id`'den büyük kayıtlara ulaşana kadar sayfaları dolaşıp, bilinen kayda denk gelince durur.
 
 > **Geçmiş veri zaten repo'da.** Bu repo'yu klonlayan / fork eden herkes, `docs/*-list.txt` ve `state/seen_ids.json` dosyalarını hazır alır. Delta sync bu noktadan devam eder — kendi ortamında full sync çalıştırman **gerekmez**. Docker imajı da bu veriyi içinde gömülü taşır.
 
-## Cihaz konfigürasyon örnekleri
+## STIX 2.1 indicator şeması (özet)
+
+TAXII envelope'unda dönen her objet STIX 2.1 `indicator`'dır. `created_by_ref` SGB identity'sine bağlıdır; deterministik UUIDv5 sayesinde kayıt silinip geri eklense bile aynı id'yi alır. SIEM tarafında duplicate üretmez. Detay + örnek payload: [docs/setup-taxii.md](docs/setup-taxii.md).
+
+## Cihaz konfigürasyon örnekleri (engelleme)
 
 ### FortiGate (CLI)
 
@@ -94,7 +113,7 @@ config system external-resource
 end
 ```
 
-Kendi base URL'ini kullanmak için (GitLab/Docker/K8s) yukarıdaki host kısmını değiştir. Tüm cihazlar (Sophos, Palo Alto, pfSense, Pi-hole, Squid) için detaylı örnekler: [docs/setup-github.md](docs/setup-github.md).
+Diğer cihazlar için: [docs/index.html](docs/index.html) "Engelleme" sekmesi.
 
 ## Kendin koşturmak istersen (CLI)
 
@@ -105,6 +124,7 @@ pip install requests
 python scripts/sync.py --mode delta    # ~1-3 dk — repo'daki veriden devam eder
 python scripts/sync.py --mode loop     # docker icin: delta'yi surekli tetikler
 python scripts/sync.py --mode full     # SADECE sifirdan tam re-sync gerekirse (~10-15+ saat)
+python scripts/build_taxii.py          # TAXII statik agacini uretir (docs/taxii/)
 ```
 
 Environment variables:

@@ -14,9 +14,9 @@ Her use case'in:
 
 - Kanonik tanımı burada (bu dizinde, `UC-*.md`)
 - BG Rehberi karşılığı (her dosyanın "BG Rehberi karşılığı" bölümü)
-- QRadar implementasyonu: [siem/qradar/](../../siem/qradar/)
-- Splunk implementasyonu: [siem/splunk/TA-sgb-threatintel/](../../siem/splunk/TA-sgb-threatintel/)
-- Severity formülü: [severity-matrix.md](../../siem/qradar/severity-matrix.md)
+- TAXII koleksiyon eşleşmesi (her dosyanın "Teknik özet" tablosunda)
+- Ürün bazlı kurulum: [integrations/](../integrations/) (QRadar, Splunk, Sentinel, MISP, OpenCTI, XSOAR, …)
+- Severity formülü: aşağıdaki [Severity matrisi](#severity) bölümü
 
 ## ID konvansiyonu
 
@@ -88,11 +88,55 @@ UC-XX-<NNN>     Cross-category / meta-rule
 | **3.3.2** Taşınabilir Bilgisayar Güvenliği | UC-MF-002 |
 | **4.5.2 / 4.5.3** Kritik Altyapılar (EKS / Elektronik Haberleşme) | UC-OT-001 |
 
+## TAXII koleksiyon → UC eşleştirmesi {#taxii}
+
+Tüm UC'ler [TAXII 2.1 servisi](../setup-taxii.md) (`https://sgb-taxii.bilsec.tr/taxii2/`)
+üzerinden tüketilir. SIEM kuralı yazarken eşleşen koleksiyonu aboneliğe alın:
+
+| UC prefix | TAXII collection |
+|-----------|------------------|
+| `UC-PH-*` | `sgb-phishing` |
+| `UC-BC-*` | `sgb-botnet-cc` |
+| `UC-AC-*` | `sgb-apt-cc` |
+| `UC-EK-*` | `sgb-exploit-kit` |
+| `UC-MF-*` | `sgb-malware-download` |
+| `UC-MM-*` | `sgb-mining` |
+| `UC-MC-*` | `sgb-mobile-cc` |
+| `UC-OT-*` | `sgb-other` |
+| `UC-XX-*` (çapraz) | İlgili tüm koleksiyonlara abone ol |
+
+## Severity matrisi {#severity}
+
+Tüm SIEM'lerde aynı formül kullanılır:
+
+| CT | Anlam | Base severity |
+|----|-------|--------------:|
+| AC | APT C&C | **10** (sabit) |
+| BC | Botnet C&C | 8 |
+| EK | Exploit Kit | 8 |
+| MF | Malware Download | 7 |
+| MC | Mobile C&C | 7 |
+| PH | Phishing | 5 |
+| MM | Mining | 3 |
+| OT | Other | 3 |
+
+`final_severity = clamp(base + ((criticality_level - 5) / 2), 1, 10)`
+
+- criticality 8+ → +1.5 → +2
+- criticality ≤ 3 → -1
+- criticality 4-7 → değişiklik yok
+
+**Source confidence (offense açma eşiği):**
+
+- Source ∈ {US, SB, SO} → offense aç
+- Source = RS → offense aç, severity -1
+- Source = IH → offense açma, yalnız kayıt at (yüksek FP)
+
 ## Yeni use case eklemek
 
 1. [_template.md](_template.md) kopyala → `UC-<CT>-<NNN>.md`
 2. README'deki Index tablosuna satır ekle (BG madde referansı dahil)
-3. QRadar/Splunk tarafında implementasyon ekle (AQL/macro) ve cross-link ver
+3. Teknik özet tablosunda doğru TAXII koleksiyonunu belirt
 4. [../bg-rehber-mapping.md](../bg-rehber-mapping.md) içindeki "UC → BG madde
    matrisi" tablosuna satır ekle
-5. (Opsiyonel) `docs/integrations/` altına yeni data source ingest guide yaz
+5. (Opsiyonel) [../integrations/](../integrations/) altına yeni ürün ingest guide'ı yaz

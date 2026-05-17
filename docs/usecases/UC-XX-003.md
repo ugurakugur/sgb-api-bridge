@@ -45,7 +45,7 @@ göz at" demektir.
 | Connectiontype | XX (meta) |
 | Severity (base) | dinamik (7-10) |
 | Veri kaynakları | Tüm SGB notable event'ları |
-| Reference / lookup | `SGB_*_MAP` (criticality alanı) |
+| TAXII koleksiyonu | (birden fazla - UC icerigine gore sgb-* koleksiyonlari) (legacy reference set: `SGB_*_MAP` (criticality alanı)) |
 
 ## Tespit mantığı
 

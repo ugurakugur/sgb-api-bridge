@@ -40,7 +40,7 @@ ONE) device_id ile kullanıcı kimliği eşleştirilebilir.
 | Connectiontype | MC |
 | Severity (base) | 7 |
 | Veri kaynakları | Mobile VPN (GlobalProtect mobile, Pulse mobile), MDM (Intune, Workspace ONE), Mobile gateway |
-| Reference / lookup | `SGB_MC_IP`, `SGB_MC_DOMAIN`, `SGB_MC_URL` |
+| TAXII koleksiyonu | `sgb-mobile-cc` (legacy reference set: `SGB_MC_IP`, `SGB_MC_DOMAIN`, `SGB_MC_URL`) |
 | Response | PB-MC-001 (MDM remote inspect + container wipe değerlendir) |
 
 ## Tespit mantığı

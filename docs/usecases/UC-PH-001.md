@@ -49,7 +49,7 @@ alan adı SGB'nin oltalama listesinde varsa — alarm üretir.
 | Connectiontype | PH |
 | Severity (base) | 5 (kritiklik modifier ile yükselir) |
 | Veri kaynakları | DNS query log (BIND, Windows DNS, Infoblox, Cisco Umbrella, Pi-hole) |
-| Reference set / lookup | `SGB_PH_DOMAIN` + `SGB_DOMAIN_MAP` (zenginleştirme için) |
+| TAXII koleksiyonu | `sgb-phishing` (legacy reference set: `SGB_PH_DOMAIN` + `SGB_DOMAIN_MAP` (zenginleştirme için)) |
 | Response playbook | PB-PH-001 (kullanıcı uyarısı + URL blok + EDR taraması) |
 
 ## Tespit mantığı (vendor-bağımsız)

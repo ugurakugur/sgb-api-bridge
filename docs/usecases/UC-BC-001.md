@@ -51,7 +51,7 @@ zaten infekte, dış dünyaya komut için bağlanıyor".
 | Connectiontype | BC |
 | Severity (base) | 8 (criticality ile 10'a çıkar) |
 | Veri kaynakları | Firewall (Palo Alto, Fortinet, Cisco ASA), NetFlow/sFlow/IPFIX, Proxy |
-| Reference / lookup | `SGB_BC_IP` + `SGB_IP_MAP` |
+| TAXII koleksiyonu | `sgb-botnet-cc` (legacy reference set: `SGB_BC_IP` + `SGB_IP_MAP`) |
 | Response | PB-BC-001 (host isolation + packet capture + IR ticket) |
 
 ## Tespit mantığı

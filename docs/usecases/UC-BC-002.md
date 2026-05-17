@@ -48,7 +48,7 @@ devreye girer ("multi-stage compromise" göstergesi).
 | Connectiontype | BC |
 | Severity (base) | 8 |
 | Veri kaynakları | DNS query logs (BIND, Windows DNS, Infoblox, Umbrella) |
-| Reference / lookup | `SGB_BC_DOMAIN`, `SGB_DOMAIN_MAP` |
+| TAXII koleksiyonu | `sgb-botnet-cc` (legacy reference set: `SGB_BC_DOMAIN`, `SGB_DOMAIN_MAP`) |
 | Response | PB-BC-002 (DNS sinkhole + host quarantine) |
 
 ## Tespit mantığı

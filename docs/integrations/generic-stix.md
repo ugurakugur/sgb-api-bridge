@@ -1,13 +1,10 @@
-# Entegrasyon: Diğer Ürünler (Generic STIX 2.1 + CSV/JSONL)
+# Entegrasyon: Diğer Ürünler (Generic TAXII 2.1)
 
-> **Hedef:** STIX 2.1 / TAXII destekleyen veya CSV/JSONL'i tüketebilen
-> herhangi bir SIEM/XDR/EDR/SOAR için generic ingest rehberi.
+> **Hedef:** TAXII 2.1 destekleyen herhangi bir SIEM/XDR/EDR/SOAR/TIP için
+> SGB feed'ini bağlama rehberi. TAXII destekleyemeyen klasik araçlar
+> (Suricata, Wazuh) için text slice alternatifi.
 
-**Tüketilen artifact:** İhtiyaca göre:
-
-- `feeds/stix/sgb-*.stix2.json` — STIX 2.1 bundle
-- `feeds/sgb-master.csv` / `sgb-master.jsonl` — kanonik tablo
-- `feeds/by-connectiontype/*.txt` — basit text slice'lar
+**Tüketilen servis:** `https://sgb-taxii.bilsec.tr/taxii2/` (anonim, TAXII 2.1)
 
 ## BG Rehberi karşılığı
 
@@ -18,142 +15,177 @@
 | **3.1.6.4** | Kara Liste Kullanımı | Suricata/Wazuh text slice = kara liste |
 | **3.1.8.7** | Kayıt Analizi Araçları (SIEM) | Elastic / Securonix / Exabeam — alternatif SIEM'ler |
 
+## Servis bilgileri
+
+```
+Discovery: https://sgb-taxii.bilsec.tr/taxii2/
+API root:  https://sgb-taxii.bilsec.tr/api/
+Koleksiyonlar: sgb-phishing, sgb-botnet-cc, sgb-apt-cc, sgb-exploit-kit,
+               sgb-malware-download, sgb-mining, sgb-mobile-cc, sgb-other
+Auth: yok (anonim)
+Polling: saatlik öneri (added_after ile incremental)
+```
+
 ## Hedef sistem matrisi
 
-| Sistem | Önerilen artifact | Method | Birincil BG madde |
-|--------|---------------------|--------|-------------------|
-| **CrowdStrike Falcon** | CSV master | Indicator Upload API (`/iocs/entities/indicators/v1`) | 3.1.5.1 |
-| **Microsoft Defender XDR** | STIX bundle | TI Upload API (Graph) — Sentinel ile aynı | 3.1.5.1 |
-| **Palo Alto Cortex XSOAR** | STIX bundle | Built-in "Generic STIX Feed" integration | 3.1.10.4 |
-| **Trellix XDR (eski FireEye)** | STIX bundle | TAXII 2.1 client (server kurarsak) | 3.1.10.4 |
-| **Elastic Security** | CSV/JSONL | Threat Intelligence filebeat module | 3.1.8.7 |
-| **Wazuh** | text slice | Active Response + CDB list | 3.1.6.4 |
-| **Securonix / Exabeam UEBA** | CSV | Watchlist / Threat Intel import | 3.1.8.7 |
-| **OPNsense / pfSense** | text slice | pfBlockerNG (zaten ana sayfada) | 3.1.6.4 |
-| **Suricata / Snort** | text slice | rule files / IPONLY ruleset | 3.1.6.18 |
+| Sistem | Önerilen yöntem | Birincil BG madde |
+|--------|------------------|-------------------|
+| **Cortex XSOAR** | Built-in "TAXII 2 Feed" integration | 3.1.10.4 |
+| **Trellix XDR (eski FireEye)** | TAXII 2.1 client (built-in) | 3.1.10.4 |
+| **Microsoft Defender XDR** | Sentinel TI blade üzerinden (TAXII), Defender otomatik ingest | 3.1.5.1 |
+| **CrowdStrike Falcon** | Falcon Foundry TAXII connector veya custom API push | 3.1.5.1 |
+| **Elastic Security** | Threat Intel Filebeat module — TAXII input | 3.1.8.7 |
+| **Securonix / Exabeam UEBA** | Built-in TAXII threat intel ingest | 3.1.8.7 |
+| **Suricata / Snort** | Text slice (TAXII desteği yok) | 3.1.6.18 |
+| **Wazuh** | Text slice + CDB list (TAXII desteği yok) | 3.1.6.4 |
+| **OPNsense / pfSense** | Text slice (ana sayfada zaten kapsanır) | 3.1.6.4 |
 
-## Pattern: CSV-based ingest (Falcon, Securonix, Exabeam, Elastic vb.)
+## Pattern: Built-in TAXII 2.1 client
 
-Master CSV şeması:
+Modern SIEM/XDR ürünlerinin çoğu native TAXII 2.1 client içerir.
+Genel kurulum şablonu (UI menü adları değişir):
 
-```
-id,type,value,description,connectiontype,source,criticality_level,api_date,first_seen_utc,last_seen_utc
-```
+1. Settings / Integrations → "TAXII 2 Feed" (veya "Threat Intelligence — TAXII")
+2. **Discovery URL:** `https://sgb-taxii.bilsec.tr/taxii2/`
+3. **API root:** `https://sgb-taxii.bilsec.tr/api/`
+4. **Collection ID:** istenen koleksiyon (örn. `sgb-phishing`)
+5. **Auth:** None
+6. **Poll interval:** 60 dakika
+7. Default reputation / verdict: Malicious
 
-CrowdStrike Falcon örneği (PSFalcon):
+Her UC için ayrı feed/instance (8 koleksiyon → 8 feed).
 
-```powershell
-Import-Module PSFalcon
-Request-FalconToken -ClientId $env:CSID -ClientSecret $env:CSSEC
+### Cortex XSOAR
 
-Import-Csv feeds/sgb-master.csv | ForEach-Object {
-  $type = switch ($_.type) {
-    'ip'     { 'ipv4' }
-    'ip6'    { 'ipv6' }
-    'domain' { 'domain' }
-    'url'    { 'url' }
-  }
-  if (-not $type) { return }
-  New-FalconIoc -Type $type -Value $_.value `
-    -Action 'detect' -Severity (if ([int]$_.criticality_level -ge 8) {'high'} else {'medium'}) `
-    -Description "SGB $($_.connectiontype) ($($_.description))" `
-    -Source 'SGB' -Tags @("sgb:$($_.connectiontype.ToLower())")
-}
-```
+**Settings → Integrations → TAXII 2 Feed**
 
-## Pattern: STIX 2.1 bundle ingest (Defender XDR, Cortex XSOAR, vb.)
+| Parameter | Value |
+|-----------|-------|
+| Discovery Service | `https://sgb-taxii.bilsec.tr/taxii2/` |
+| Collection to Fetch | `sgb-phishing` (her UC için ayrı instance) |
+| Fetch Indicators | ✓ |
+| Indicator Reputation | Bad |
+| Fetch interval | 1 hour |
 
-Cortex XSOAR'da:
+Indicator types map (otomatik):
 
-1. **Settings > Integrations** > "Generic STIX Feed"
-2. URL: `https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-domain.stix2.json` (her tip için ayrı instance)
-3. Fetch interval: 60 dakika
-4. Indicator types map:
-   - `domain-name` → `Domain`
-   - `ipv4-addr` → `IP`
-   - `ipv6-addr` → `IPv6`
-   - `url` → `URL`
-5. Default reputation: Malicious
-6. Run → Indicators sekmesinde SGB indicator'lar görülür
+- `domain-name` → `Domain`
+- `ipv4-addr` → `IP`
+- `ipv6-addr` → `IPv6`
+- `url` → `URL`
 
-## Pattern: TAXII 2.1 (server kurarsak)
+### Elastic Security (Filebeat threatintel module)
 
-Henüz aktif değil. Roadmap'te `medallion` veya OASIS reference TAXII server
-ile `feeds/stix/*` collection'larını yayınlamak var. Etkinleştiğinde URL:
-
-```
-https://taxii.bilsectr.github.io/api/v21/collections/sgb-{type}/objects/
+```yaml
+# filebeat.yml
+filebeat.modules:
+  - module: threatintel
+    misp:
+      enabled: false
+    taxii:
+      enabled: true
+      var.input: httpjson
+      var.url: "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/"
+      var.interval: 1h
 ```
 
-## Pattern: Text slice (Suricata, Wazuh CDB)
+Index pattern: `filebeat-*` → "Threat Intel" dashboard otomatik dolar.
+
+## Pattern: Air-gapped / TAXII desteği olmayan ürünler
+
+TAXII'ye çıkamayan ortamlar için iki seçenek:
+
+### Seçenek A — Self-host TAXII servisi
+
+İç ağda Docker/K8s ile aynı TAXII endpoint'i ayağa kaldırın; ürünler
+internal host'a bağlanır, sadece host'un SGB API'sine outbound HTTPS
+erişimi olur. Bkz. [setup-docker.md](../setup-docker.md),
+[setup-k8s.md](../setup-k8s.md).
+
+### Seçenek B — Düz metin (text slice) feed
+
+Suricata, Wazuh CDB list, MikroTik address-list gibi STIX/TAXII
+anlamayan araçlar için ana sayfa düz metin URL'leri:
+
+```
+https://bilsectr.github.io/sgb-api-bridge/domain-list.txt
+https://bilsectr.github.io/sgb-api-bridge/ip-list.txt
+https://bilsectr.github.io/sgb-api-bridge/url-list.txt
+```
+
+Bu listeler `connectiontype` ayrımı **içermez** (tek birleşik kara liste).
+CT ayrımı isterseniz TAXII koleksiyonlarından kendi script'inizle çıkartın:
 
 ```bash
-# Suricata IP-only ruleset - Release tarball'ından tek dosya çek
-curl -sLO https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-feeds.tar.gz
-tar -xzf sgb-feeds.tar.gz feeds/by-connectiontype/bc-ip.txt \
-  -O > /etc/suricata/rules/sgb-bc-ip.txt
-rm sgb-feeds.tar.gz
+# sgb-botnet-cc koleksiyonundan IP'leri çıkar (Suricata için)
+curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-botnet-cc/objects/?limit=5000" \
+  | jq -r '.objects[] | select(.x_sgb_type=="ip") | .x_sgb_value' \
+  > /etc/suricata/rules/sgb-bc-ip.txt
+```
 
-# Suricata ip-only rules (her satıra drop kuralı oluşturur)
+Suricata rule generation:
+
+```bash
 awk '{print "drop ip any any -> "$1" any (msg:\"SGB Botnet C2\"; sid:9000001+NR;)"}' \
   /etc/suricata/rules/sgb-bc-ip.txt > /etc/suricata/rules/sgb-bc-ip.rules
 
 systemctl reload suricata
 ```
 
-Wazuh CDB list (özellik: O(log n) lookup):
+Wazuh CDB list:
 
 ```bash
-curl -sf .../feeds/by-connectiontype/ph-domain.txt \
-  | awk '{print $1":sgb_phishing"}' > /var/ossec/etc/lists/sgb_phishing.txt
+curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?limit=5000" \
+  | jq -r '.objects[] | select(.x_sgb_type=="domain") | .x_sgb_value + ":sgb_phishing"' \
+  > /var/ossec/etc/lists/sgb_phishing.txt
 
-# Wazuh API ile reload
 /var/ossec/bin/wazuh-control reload
 ```
 
-## Pattern: Webhook / SOAR enrichment
+## Veri tazeliği
 
-Generic enrichment endpoint pattern'i:
+| Sistem | Önerilen polling | Notlar |
+|--------|------------------|--------|
+| XSOAR / XDR / Sentinel / Splunk ES / QRadar TI | 1 saat (built-in) | TAXII `added_after` ile incremental |
+| Elastic Filebeat threatintel | 1 saat | `var.interval: 1h` |
+| Suricata / Wazuh (text slice) | 1 saat | curl + reload |
+| SOAR enrichment (synchronous lookup) | Lokal cache + 1h TTL | Hot lookup için TAXII çağrısı yapma |
+
+## Custom enrichment cache (Python örnek)
 
 ```python
-# SOAR/n8n/Zapier/Power Automate'te HTTP node
-def is_sgb_indicator(value, typ):
-    """Lokalde indir, tek-lookup performanslı kullan."""
-    if not hasattr(is_sgb_indicator, "cache"):
-        is_sgb_indicator.cache = {
-            "ip": set(open("feeds/by-connectiontype/bc-ip.txt").read().split()),
-            "domain": set(open("feeds/by-connectiontype/ph-domain.txt").read().split()),
-            "url": set(open("feeds/by-connectiontype/ph-url.txt").read().split()),
-        }
-    return value in is_sgb_indicator.cache.get(typ, set())
-```
+import requests, time
 
-## Veri tazeliği (her sistem için)
+class SGBCache:
+    def __init__(self, collection="sgb-phishing", ttl_sec=3600):
+        self.url = f"https://sgb-taxii.bilsec.tr/api/collections/{collection}/objects/"
+        self.ttl = ttl_sec
+        self._values = set()
+        self._loaded_at = 0
 
-| Sistem | Önerilen refresh | Yöntem |
-|--------|------|----------|
-| Falcon, Defender, XSOAR | 1-6 saat | API push (cron / scheduled task) |
-| Suricata, Wazuh | 1 saat | curl + reload |
-| SOAR | her use'da local cache + 1h TTL | python decorator |
+    def _refresh(self):
+        next_cursor = ""
+        values = set()
+        while True:
+            params = {"limit": 5000}
+            if next_cursor:
+                params["next"] = next_cursor
+            r = requests.get(self.url, params=params, timeout=30).json()
+            for obj in r.get("objects", []):
+                if obj.get("type") == "indicator":
+                    values.add(obj.get("x_sgb_value"))
+            if not r.get("more"):
+                break
+            next_cursor = r["next"]
+        self._values = values
+        self._loaded_at = time.time()
 
-## Manifest doğrulaması
+    def __contains__(self, value):
+        if time.time() - self._loaded_at > self.ttl:
+            self._refresh()
+        return value in self._values
 
-Her sync sonrası `feeds/index.json` güncellenir:
-
-```json
-{
-  "generated_utc": "...",
-  "files": [
-    { "path": "stix/sgb-domain.stix2.json", "sha256": "...", "size_bytes": ... }
-  ]
-}
-```
-
-Air-gapped ortamlarda SHA256 ile bundle integrity doğrulaması (BG **3.1.8.4**
-"detaylı kayıt + bütünlüğü zaman damgası ile korunmalı" maddesine paralel):
-
-```bash
-EXPECTED=$(curl -sf https://.../feeds/index.json | jq -r '.files[] | select(.path=="stix/sgb-domain.stix2.json").sha256')
-ACTUAL=$(sha256sum local-sgb-domain.stix2.json | awk '{print $1}')
-[ "$EXPECTED" = "$ACTUAL" ] && echo OK || echo MISMATCH
+sgb_phishing = SGBCache("sgb-phishing")
+if "evilbank.example" in sgb_phishing:
+    raise_alert()
 ```

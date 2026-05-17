@@ -51,7 +51,7 @@ biri DNS, diğeri HTTP katmanında — komplementer kapsama için.
 | Connectiontype | PH |
 | Severity (base) | 5 |
 | Veri kaynakları | Web proxy / SWG (Bluecoat, Forcepoint, Zscaler, Squid, Cisco WSA) |
-| Reference / lookup | `SGB_PH_URL` + `SGB_URL_MAP` |
+| TAXII koleksiyonu | `sgb-phishing` (legacy reference set: `SGB_PH_URL` + `SGB_URL_MAP`) |
 | Response | PB-PH-002 (URL block + kullanıcı bilgilendirme) |
 
 ## Tespit mantığı

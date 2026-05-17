@@ -33,7 +33,7 @@ Bu pattern emerging threat'leri (yeni kampanya başlangıcı) erken görür.
 | Connectiontype | OT |
 | Severity (base) | 3 (offense açılmaz, log only) |
 | Veri kaynakları | Tüm kaynaklar (geniş kapsam) |
-| Reference / lookup | `SGB_OT_IP`, `SGB_OT_DOMAIN`, `SGB_OT_URL` |
+| TAXII koleksiyonu | `sgb-other` (legacy reference set: `SGB_OT_IP`, `SGB_OT_DOMAIN`, `SGB_OT_URL`) |
 
 ## Tespit mantığı
 

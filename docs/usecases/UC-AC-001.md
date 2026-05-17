@@ -50,7 +50,7 @@ Geniş kapsamlı bir "guard rail" kuralıdır.
 | Connectiontype | AC |
 | Severity | **10 (sabit)** — criticality bile etkilemez |
 | Veri kaynakları | TÜM log source'lar (firewall, proxy, DNS, EDR, mail, IDS, OS) |
-| Reference / lookup | `SGB_AC_IP`, `SGB_AC_DOMAIN`, `SGB_AC_URL` |
+| TAXII koleksiyonu | `sgb-apt-cc` (legacy reference set: `SGB_AC_IP`, `SGB_AC_DOMAIN`, `SGB_AC_URL`) |
 | Response | PB-AC-001 (P1 incident, CSIRT/SOC manager paging, lockdown) |
 
 ## Tespit mantığı

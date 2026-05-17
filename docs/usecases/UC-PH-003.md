@@ -52,7 +52,7 @@ silindi/karantinaya alındı" diyebilir.
 | Connectiontype | PH |
 | Severity (base) | 6 (mail teslim edilmiş — exposure aşaması; PH-001'den 1 yüksek) |
 | Veri kaynakları | Mail gateway / SEG (Proofpoint, Mimecast, Cisco ESA, M365 ATP) |
-| Reference / lookup | `SGB_PH_DOMAIN`, `SGB_PH_URL` |
+| TAXII koleksiyonu | `sgb-phishing` (legacy reference set: `SGB_PH_DOMAIN`, `SGB_PH_URL`) |
 | Response | PB-PH-003 (mail recall + kullanıcı bilgilendirme + asset takip) |
 
 ## Tespit mantığı

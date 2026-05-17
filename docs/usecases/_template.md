@@ -28,7 +28,7 @@ kaynağında, hangi SGB feed alanı, nasıl korelasyon.)
 | Connectiontype | PH/BC/AC/EK/MF/MM/MC/OT/XX |
 | Severity (base) | 1-10 (severity-matrix.md formülü) |
 | Veri kaynakları | (DNS, Proxy, Firewall, EDR, Email, MDM, ...) |
-| Reference / lookup | `SGB_<CT>_<TYPE>`, `SGB_<TYPE>_MAP` |
+| TAXII koleksiyonu | `sgb-<phishing\|botnet-cc\|apt-cc\|exploit-kit\|malware-download\|mining\|mobile-cc\|other>` |
 | Response | PB-XX-NNN (varsa) |
 
 ## Tespit mantığı (vendor-bağımsız)
@@ -40,24 +40,26 @@ when <event geldi>
 then <aksiyon>
 ```
 
-## QRadar uygulaması
+## SIEM uygulaması
 
-- Reference set/map: `SGB_*`
-- Rule türü: Event Rule / Flow Rule / Common Rule
-- AQL test: [siem/qradar/aql/uc-xx-nnn-test.aql](../../siem/qradar/aql/)
+İlgili TAXII koleksiyonunu SIEM'inize feed olarak ekleyin
+(bkz. [integrations/](../integrations/)). Tüm modern ürünlerde indicator
+otomatik olarak TI store'a yazılır; rule "indicator match" property'si
+ile yazılır — vendor-spesifik reference set/map veya lookup gerekmez.
+
+Örnek (QRadar):
 
 ```
-when ...
+when any of these properties matches a TAXII Feed indicator
+     from feed SGB-<Collection>
+  AND <ek filter>
 ```
 
-## Splunk uygulaması
-
-- Saved search: `SGB - UC-XX-NNN - <title>`
-- Macro: `sgb_<name>_search`
-- Lookup: `sgb_<ip|domain|url>.csv`
+Örnek (Splunk ES):
 
 ```spl
-...
+| `threatintel_lookup`
+| search threat_group="SGB-<Collection>" AND ...
 ```
 
 ## Yanlış pozitif (False Positive) notları

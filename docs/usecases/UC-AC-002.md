@@ -44,7 +44,7 @@ Eşik 3 olmak üzere ayarlandı çünkü:
 | Connectiontype | AC (aggregate) |
 | Severity (base) | 10 (sabit, lockdown trigger) |
 | Veri kaynakları | UC-AC-001'in alt setiyle aynı (tüm log sourceları) |
-| Reference / lookup | `SGB_AC_IP`, `SGB_AC_DOMAIN`, `SGB_AC_URL` |
+| TAXII koleksiyonu | `sgb-apt-cc` (legacy reference set: `SGB_AC_IP`, `SGB_AC_DOMAIN`, `SGB_AC_URL`) |
 | Response | PB-AC-002 (immediate host isolation, no manual approval) |
 
 ## Tespit mantığı

@@ -38,7 +38,7 @@ performans etkisi.
 | Connectiontype | MM (composite) |
 | Severity (base) | 5 |
 | Veri kaynakları | EDR perf telemetry / OS metrics + UC-MM-001 (SGB MM hit) |
-| Reference / lookup | `SGB_MM_IP`, `SGB_MM_DOMAIN` |
+| TAXII koleksiyonu | `sgb-mining` (legacy reference set: `SGB_MM_IP`, `SGB_MM_DOMAIN`) |
 
 ## Tespit mantığı
 
