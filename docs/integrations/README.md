@@ -87,7 +87,7 @@ Her doküman aşağıdaki bölümleri içerir:
 | XSOAR / XDR / Falcon | Built-in TAXII feed | 1 saat |
 | Suricata / Wazuh (text slice) | curl + reload | 1 saat (cron) |
 
-> **Neden 1 saat?** SGB API delta sync cadence'imiz saatliktir; entegrasyon
+> **Neden 1 saat?** SGB API sync cadence'imiz saatliktir; entegrasyon
 > bu tempoyu eşlerse tazelik kaybı olmaz. **3.1.5.1**'in "imza/IoC veri
 > tabanı güncel olmalı" ifadesinin somut karşılığıdır. Cloudflare edge
 > cache TTL 300 sn olduğundan TAXII polling cevabı dakikalar içinde
@@ -100,8 +100,7 @@ kendi TAXII servisinizi self-host edebilir; SIEM/TIP iç host'a bağlanır:
 
 - Docker tek konteyner: [../setup-docker.md](../setup-docker.md)
 - Kubernetes: [../setup-k8s.md](../setup-k8s.md)
-- Self-hosted GitLab (Pages): [../setup-gitlab.md](../setup-gitlab.md)
 
-Her üç yöntemde de aynı statik TAXII ağacı (`docs/taxii/`) nginx ile
+Her iki yöntemde de aynı statik TAXII ağacı (`docs/taxii/`) nginx ile
 servis edilir; SIEM tarafında URL host kısmını kendi adresinizle
 değiştirmek yeter.

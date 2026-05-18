@@ -100,7 +100,7 @@ Response:
   Annotate offense: "SGB phishing match — UC-PH-001"
 ```
 
-Severity formülü: [severity-matrix.md](../../docs/usecases/README.md#severity).
+Severity formülü: [usecases/README.md#severity](../usecases/README.md#severity).
 
 ## Adım 4 — AQL ile doğrulama
 

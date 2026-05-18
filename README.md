@@ -1,7 +1,7 @@
 # SGB API Bridge
 
 [![Last sync](https://img.shields.io/github/last-commit/bilsectr/sgb-api-bridge?label=last%20sync)](https://bilsectr.github.io/sgb-api-bridge/stats.json)
-[![Delta sync](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml/badge.svg)](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml)
+[![Hourly sync](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml/badge.svg)](https://github.com/bilsectr/sgb-api-bridge/actions/workflows/sync-delta.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 SGB (Siber Güvenlik Başkanlığı, eski **USOM** — Ulusal Siber Olaylara Müdahale Merkezi) tehdit beslemesini iki farklı tüketim modelinde sunar:
@@ -66,9 +66,8 @@ Public servisi kullanmak yerine kendi altyapınızda çalıştırmak isterseniz:
 
 | Model | Senaryo | Kurulum dokümanı |
 |---|---|---|
-| **Docker** | Tek konteyner; firewall feed + TAXII servisi birlikte | [docs/setup-docker.md](docs/setup-docker.md) |
+| **Docker** | Tek konteyner; firewall feed + TAXII servisi birlikte (air-gapped destekler) | [docs/setup-docker.md](docs/setup-docker.md) |
 | **Kubernetes** | CronJob + Deployment, kurumsal | [docs/setup-k8s.md](docs/setup-k8s.md) |
-| **Self-hosted GitLab** | Air-gapped — internet'ten bağımsız mirror | [docs/setup-gitlab.md](docs/setup-gitlab.md) |
 | **GitHub Pages** | Public CDN (bu repo'nun kendisi) | [docs/setup-github.md](docs/setup-github.md) |
 
 ```bash
@@ -82,13 +81,12 @@ docker run -d --name sgb-api-bridge -p 8080:80 \
 
 ## Nasıl çalışır?
 
-- **Delta sync** — saatte bir, SGB API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) yalnız yeni kayıtları çeker (~1-3 dk). **Sürekli çalışan tek mekanizma budur.**
-- **TAXII rebuild** — her delta sonrası `build_taxii.py` statik TAXII ağacını (`docs/taxii/`) yeniden üretir; Cloudflare Worker bu ağacı edge'de servis eder.
-- **Full sync** — yalnızca **ilk kurulumda bir kez, elle** çalıştırılır (~10-15+ saat). Otomatik/zamanlı çalışmaz. Resume desteklidir.
+- **Hourly sync** — saatte bir, SGB API'sinden her tür için (`domain`, `url`, `ip`, `ip6`, `ip6net`) tüm kayıtlar `--per-page=1000` ile sayfalanır (~10 dk). GitHub Actions tarafından otomatik tetiklenir.
+- **TAXII rebuild** — her sync sonrası `build_taxii.py` statik TAXII ağacını (`docs/taxii/`) yeniden üretir; Cloudflare Worker bu ağacı edge'de servis eder.
 
-SGB API kayıtları tarih sırasına göre newest-first dönüyor ve ID'ler global monoton artıyor. Delta job'ı her tür için `state/seen_ids.json`'daki `max_id`'den büyük kayıtlara ulaşana kadar sayfaları dolaşıp, bilinen kayda denk gelince durur.
+SGB API kayıtları tarih sırasına göre newest-first dönüyor ve ID'ler global monoton artıyor. `sync.py` her tür için tüm sayfaları gezer, SQLite'ı upsert eder ve `docs/*-list.txt` dosyalarını yeniden üretir.
 
-> **Geçmiş veri zaten repo'da.** Bu repo'yu klonlayan / fork eden herkes, `docs/*-list.txt` ve `state/seen_ids.json` dosyalarını hazır alır. Delta sync bu noktadan devam eder — kendi ortamında full sync çalıştırman **gerekmez**. Docker imajı da bu veriyi içinde gömülü taşır.
+> **Geçmiş veri zaten repo'da.** Bu repo'yu klonlayan / fork eden herkes, `docs/*-list.txt` ve `state/seen_ids.json` dosyalarını hazır alır. SQLite (`sgb.db`) `feeds-latest` release asset'inden indirilebilir.
 
 ## STIX 2.1 indicator şeması (özet)
 
@@ -121,9 +119,8 @@ Diğer cihazlar için: [docs/index.html](docs/index.html) "Engelleme" sekmesi.
 git clone https://github.com/bilsectr/sgb-api-bridge
 cd sgb-api-bridge
 pip install requests
-python scripts/sync.py --mode delta    # ~1-3 dk — repo'daki veriden devam eder
-python scripts/sync.py --mode loop     # docker icin: delta'yi surekli tetikler
-python scripts/sync.py --mode full     # SADECE sifirdan tam re-sync gerekirse (~10-15+ saat)
+python scripts/sync.py --mode full     # SGB API'sini bastan sona cek (~10 dk, saatlik aksiyonun yaptigi sey)
+python scripts/sync.py --mode loop     # docker icin: belirli araliklarla full sync tetikler
 python scripts/build_taxii.py          # TAXII statik agacini uretir (docs/taxii/)
 ```
 
@@ -132,8 +129,7 @@ Environment variables:
 | Variable | Default | Açıklama |
 |---|---|---|
 | `SGB_BRIDGE_ROOT` | repo kökü | State ve docs/'un kök dizini |
-| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda delta sıklığı (sn) |
-| `SGB_BRIDGE_DELTA_MAX_PAGES` | `1000` | Delta'nın tek seferde gezeceği maks. sayfa (bayat state güvenlik tavanı) |
+| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda iki sync arası bekleme (sn) |
 
 ## Sorumluluk reddi
 

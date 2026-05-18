@@ -48,10 +48,11 @@ SGB API'sinden çekilen her kayıtta üç önemli sınıflandırma alanı vardı
 | `connectiontype` | Hangi protokol/ortam | `PH`, `BC`, `AC`, `MF`, `MM`, `EK`, `MC`, `OT` |
 | `source` | Verinin kaynağı | `SGB`, `IH` (ihbar — daha düşük güvenirlik) |
 
-Bu projede üretilen **kanonik tablo** (`feeds/sgb-master.csv` /
-`feeds/sgb-master.jsonl`) bütün kayıtları yukarıdaki üç alan + zaman damgaları
-ile birlikte yayar. SIEM'e taşınırken connectiontype bazında ayrı reference
-set'lere bölünür: `SGB_PH_DOMAIN`, `SGB_BC_IP`, `SGB_AC_URL` …
+Bu projede üretilen **kanonik tablo** (SQLite `sgb.db` + statik TAXII 2.1
+koleksiyonları) bütün kayıtları yukarıdaki üç alan + zaman damgaları ile
+birlikte yayar. SIEM/TIP/XDR ürünü tek TAXII URL'sine bağlanır; ürün
+tarafında koleksiyon bazında ayrım otomatik gelir (`sgb-phishing`,
+`sgb-botnet-cc`, `sgb-apt-cc`, …).
 
 ---
 
@@ -108,7 +109,7 @@ beklentinin nasıl karşılandığıdır.
 |-------|----------------|--------------------------|
 | **3.1.10.4** ⭐ | **"SGB ve olası diğer siber tehdit istihbarat kaynaklarından alınan bildirimler doğrultusunda gerekli önlemler alınmalı."** | **Bu projenin doğrudan referans uygulamasıdır.** SGB API → otomatik feed → SIEM kara liste/korelasyon = madde 3.1.10.4'ün operasyonel hâli. |
 | **3.1.10.5** | Siber olay raporları **standardize** edilmeli, SGB'ye iletilmeli. | UC-AC-001 / UC-XX-003 gibi yüksek kritiklikli use case'ler alarm payload'ında "report-ready" alanlarla doldurulur; bu çıktılar olay raporuna doğrudan eklenebilir. |
-| **3.1.10.8** | Olaylar puanlanmalı (risk temelli önceliklendirme). | [siem/qradar/severity-matrix.md](../siem/qradar/severity-matrix.md) — base severity × criticality matrisi tam olarak bu önceliklendirme modelidir. |
+| **3.1.10.8** | Olaylar puanlanmalı (risk temelli önceliklendirme). | [usecases/README.md#severity](usecases/README.md#severity) — base severity × criticality matrisi tam olarak bu önceliklendirme modelidir. |
 
 #### 3.1.11 — Sızma Testleri ve Güvenlik Denetimleri
 
@@ -200,12 +201,13 @@ cevaplar şunlardır:
 
 **Soru: "Madde 3.1.10.4 — SGB tehdit bildirimlerini nasıl yönetiyorsunuz?"**
 
-- Cevap: SGB API'sinden saatlik otomatik delta sync alıyoruz
+- Cevap: SGB API'sinden saatlik otomatik tam sync alıyoruz
   ([setup-docker.md](setup-docker.md) ya da
-  [setup-k8s.md](setup-k8s.md) işletim ortamımız). Gelen IoC veriyi
-  vendor-bağımsız feed paketine (`feeds/sgb-master.csv` + STIX 2.1) çeviriyoruz
-  ve SIEM'imize (QRadar/Splunk/Sentinel) otomatik yüklüyoruz. Buradan üretilen
-  korelasyon alarmları SOC ekibimizce SOAR/ticket sistemine düşüyor.
+  [setup-k8s.md](setup-k8s.md) işletim ortamımız). Gelen IoC veriyi tek bir
+  TAXII 2.1 servisine (`sgb-taxii.bilsec.tr`) dönüştürüyoruz; SIEM'imiz
+  (QRadar/Splunk/Sentinel) bu URL'yi built-in TAXII client'ı ile çekiyor.
+  Buradan üretilen korelasyon alarmları SOC ekibimizce SOAR/ticket sistemine
+  düşüyor.
 
 **Soru: "Madde 3.1.5.7 — DNS sorgu kayıtlarını nasıl denetliyorsunuz?"**
 
@@ -216,21 +218,21 @@ cevaplar şunlardır:
 **Soru: "Madde 3.1.6.4 — Kara liste politikanız nedir?"**
 
 - Cevap: Firewall/proxy kara liste içeriğimizin **bir bileşeni** SGB feed'idir.
-  Saatlik tazelenir, txt formatında `feeds/by-connectiontype/ip.txt` vb.
-  yollardan tedarik edilir. Cihaz kuralı (`SGB blocklist auto-update`) bunu
-  4 saatte bir pull eder.
+  Saatlik tazelenir, txt formatında `domain-list.txt`, `ip-list.txt`,
+  `url-list.txt` yollarından tedarik edilir. Cihaz (FortiGate external-resource,
+  Palo Alto EDL, Sophos URL host group, vb.) URL'yi saatlik kendisi pull eder.
 
 **Soru: "Madde 3.1.8.7 — SIEM korelasyon kurallarınız neyi kapsar?"**
 
 - Cevap: 22 use case'lik kütüphanemiz var (docs/usecases/), 8 connectiontype'ı
   + cross-category meta-rule'ları kapsıyor. Severity QRadar magnitude /
-  Splunk urgency'ye eşleniyor (severity-matrix.md).
+  Splunk urgency'ye eşleniyor (bkz. [usecases/README.md#severity](usecases/README.md#severity)).
 
 **Soru: "Madde 3.1.10.8 — Olayları nasıl önceliklendiriyorsunuz?"**
 
 - Cevap: Her use case'in **base severity**'si vardır (AC=10, BC=8, MF=7, PH=5,
   MM=3, OT=3 baseline). Asset criticality modifier ile çarpılır. Risk
-  temelli puanlama matrisi yazılı olarak [severity-matrix.md](../siem/qradar/severity-matrix.md)
+  temelli puanlama matrisi yazılı olarak [usecases/README.md#severity](usecases/README.md#severity)
   içindedir.
 
 ---
@@ -263,8 +265,9 @@ Bu maddeler için ayrı çözümler / süreçler gereklidir; SGB feed'i bunları
 
 1. [setup-docker.md](setup-docker.md) veya [setup-k8s.md](setup-k8s.md) ile
    sync container'ını ayağa kaldır.
-2. İlk full sync'i çalıştır, `feeds/sgb-master.csv` dolduğunu doğrula.
-3. Otomatik saatlik delta sync cron'unu aç.
+2. İlk full sync'i çalıştır, `docs/*-list.txt` dosyalarının ve
+   `docs/taxii/` ağacının dolduğunu doğrula.
+3. Otomatik saatlik tam sync (CronJob veya loop) açık olduğunu doğrula.
 
 **Faz 2 (2. hafta) — SIEM/CTI entegrasyonu**
 
@@ -295,8 +298,8 @@ Bu maddeler için ayrı çözümler / süreçler gereklidir; SGB feed'i bunları
 
 - Use case kütüphanesi → [usecases/README.md](usecases/README.md)
 - Entegrasyon kılavuzları → [integrations/README.md](integrations/README.md)
-- Kurulum (Docker / Kubernetes / GitHub Actions / GitLab CI) →
+- Kurulum (Docker / Kubernetes / GitHub Actions) →
   [setup-docker.md](setup-docker.md), [setup-k8s.md](setup-k8s.md),
-  [setup-github.md](setup-github.md), [setup-gitlab.md](setup-gitlab.md)
-- Severity matrisi → [../siem/qradar/severity-matrix.md](../siem/qradar/severity-matrix.md)
+  [setup-github.md](setup-github.md)
+- Severity matrisi → [usecases/README.md#severity](usecases/README.md#severity)
 - Firewall/proxy hızlı başlangıç → [index.html](index.html)

@@ -9,15 +9,15 @@ cihaz örnekleri" bölümüne atla.
 
 | Madde | Madde adı | Bu kurulum nasıl katkı sağlar? |
 |-------|-----------|--------------------------------|
-| **3.1.10.4** ⭐ | Siber Tehdit Bildirimlerinin Yönetilmesi | GitHub Actions saatlik delta sync → her zaman taze feed. |
+| **3.1.10.4** ⭐ | Siber Tehdit Bildirimlerinin Yönetilmesi | GitHub Actions saatlik tam sync → her zaman taze feed. |
 | **3.1.5.1** | Zararlı Yazılımdan Korunma + Merkezi Yönetim | Otomatik güncel imza/IoC. |
 | **3.1.6.4** | Kara Liste Kullanımı | Pages URL'leri firewall/proxy kara liste kaynağı. |
 | **3.5.3** | Tedarikçi İlişkileri Güvenliği | Public repo, açık kaynak, denetlenebilir. |
 | **3.1.13** | Felaket Kurtarma | GitHub repo + sync tarihçesi git history'sinde — kolay recovery. |
 
-> **Air-gapped kurum için:** GitHub kullanamıyorsanız [setup-gitlab.md](setup-gitlab.md)
-> (self-hosted GitLab) veya [setup-docker.md](setup-docker.md) /
-> [setup-k8s.md](setup-k8s.md) kullanın.
+> **Air-gapped kurum için:** GitHub kullanamıyorsanız
+> [setup-docker.md](setup-docker.md) veya [setup-k8s.md](setup-k8s.md) kullanın —
+> her ikisi de tek konteynerde txt feed + TAXII 2.1 servisini birlikte ayağa kaldırır.
 
 ## Repo'yu hazırla
 
@@ -33,8 +33,6 @@ Veya manuel fork: GitHub UI'ndan "Fork" → kendi hesabın altına klonla.
 Repo → **Settings** → **Actions** → **General** → **Workflow permissions**:
 
 - ✓ **Read and write permissions** seç
-- ✓ "Allow GitHub Actions to create and approve pull requests"
-  (auto-retrigger için gerekli)
 - **Save**
 
 ## 2. GitHub Pages'i aç
@@ -45,25 +43,14 @@ Repo → **Settings** → **Pages**:
 - Branch: `main` / folder: `/docs`
 - **Save**
 
-## 3. Delta sync'i etkinleştir
+## 3. Hourly sync'i etkinleştir
 
 Bu repo'yu fork ettiysen `docs/*-list.txt` ve `state/seen_ids.json` zaten
-dolu gelir — **full sync çalıştırman gerekmez.** Delta workflow'u
-(`Sync (delta, hourly)`) saatte bir otomatik çalışıp geçmiş veriden devam
-eder.
+dolu gelir. Hourly sync workflow'u (`Sync (hourly)`) saatte bir otomatik
+çalışıp SGB API'sinden tüm kayıtları sayfalayarak çeker (~10 dk).
 
-İlk delta'yı hemen tetiklemek istersen: Repo → **Actions** →
-**Sync (delta, hourly)** → **Run workflow**.
-
-### (Opsiyonel) Sıfırdan tam re-sync
-
-Yalnızca tamamen yeni bir veri seti çekmek istersen: Repo → **Actions** →
-**Sync (full, manual bootstrap only)** → **Run workflow** → branch `main`.
-
-Full sync ~10-15+ saat sürer. SGB rate-limit'i nedeniyle runner timeout'a
-takılabilir; son adım otomatik olarak yeni workflow tetikler ve resume
-eder. 1-2 zincir sonra `docs/*.txt` tamamen dolar. Zamanlı/haftalık
-çalışmaz — tek seferlik manuel iştir.
+İlk sync'i hemen tetiklemek istersen: Repo → **Actions** →
+**Sync (hourly)** → **Run workflow**.
 
 ## 4. Doğrulama
 
@@ -173,9 +160,8 @@ saklanır; daha uzun saklama için artifact'a archive et.
   "GitHub Pages" job'unun Actions'ta yeşil olduğunu kontrol et.
 - **Workflow "permission denied"**: 1. adımdaki "Read and write permissions"
   set edilmemiş.
-- **Full sync hep timeout yiyor**: SGB çok agresif rate-limit uyguluyor
-  demektir. `scripts/sync.py`'da `SLEEP_OK_FULL = 1.0` değerini 2.0'a çıkar,
-  push'la.
+- **Sync timeout yiyor**: SGB çok agresif rate-limit uyguluyor demektir.
+  `scripts/sync.py`'da `SLEEP_OK_FULL = 1.0` değerini 2.0'a çıkar, push'la.
 - **state/seen_ids.json bozulduysa**: dosyayı sil, fresh start için her
   tip'i sıfırla:
 

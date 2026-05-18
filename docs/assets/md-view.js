@@ -110,11 +110,7 @@
       // Render
       const bodyHtml = marked.parse(text);
       const fixed = fixRelativeLinks(bodyHtml, dir);
-      const rawLink = 'https://github.com/bilsectr/sgb-api-bridge/blob/main/docs/' + file;
-      root.innerHTML =
-        renderBreadcrumb(file) +
-        fixed +
-        '<a class="raw-link" href="' + rawLink + '" target="_blank" rel="noopener">Markdown kaynagini GitHub\'da gor →</a>';
+      root.innerHTML = renderBreadcrumb(file) + fixed;
 
       // Anchor scroll
       if (location.hash) {

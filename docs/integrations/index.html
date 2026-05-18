@@ -43,78 +43,79 @@
     <div class="grid cards">
       <a class="card" href="../view.html?file=integrations/qradar.md">
         <div class="icon">🛡️</div>
-        <span class="pill">Reference Set + Map</span>
+        <span class="pill">Threat Intelligence → TAXII</span>
         <h3>IBM QRadar</h3>
-        <p>Reference set + map CSV üretimi, REST API ile idempotent push, 3 başlangıç rule + AQL test paketi.</p>
-        <div class="meta"><span>~15 dk</span><span>v7.4+</span></div>
+        <p>Admin → Threat Intelligence → Add TAXII Feed. Koleksiyon başına bir feed; built-in indicator match rule'lar.</p>
+        <div class="meta"><span>~10 dk</span><span>QRadar 7.4+</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/splunk.md">
         <div class="icon">🔎</div>
-        <span class="pill">TA paketi</span>
+        <span class="pill">ES TI Manager / taxii2://</span>
         <h3>Splunk Enterprise / Cloud</h3>
-        <p>TA-sgb-threatintel.tar.gz install: 3 lookup, otomatik enrichment, 3 saved search + overview dashboard.</p>
+        <p>ES Threat Intelligence Manager veya Core'da <code>taxii2://</code> modular input. Lookup'a otomatik yazılır.</p>
         <div class="meta"><span>~10 dk</span><span>Splunk 8/9</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/misp.md">
         <div class="icon">🧬</div>
-        <span class="pill">STIX 2.1 Feed</span>
+        <span class="pill">TAXII Server (native)</span>
         <h3>MISP</h3>
-        <p>Feed olarak ekle (URL) veya PyMISP air-gapped; per-type STIX 2.1 bundle + tag stratejisi.</p>
-        <div class="meta"><span>~10 dk</span><span>MISP 2.4.150+</span></div>
+        <p>Sync Actions → Servers → Add TAXII server. MISP 2.4.160+ native TAXII 2.1 client'ı kullanır.</p>
+        <div class="meta"><span>~10 dk</span><span>MISP 2.4.160+</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/opencti.md">
         <div class="icon">🕸️</div>
-        <span class="pill">External Import Connector</span>
+        <span class="pill">connector-external-import-taxii</span>
         <h3>OpenCTI</h3>
-        <p>Resmi external-import-file-stix connector + custom Python connector iskeleti + lifecycle yönetimi.</p>
+        <p>Tek connector tüm koleksiyonları çeker; <code>added_after</code> ile incremental polling.</p>
         <div class="meta"><span>~15 dk</span><span>OpenCTI 5/6</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/sentinel.md">
         <div class="icon">☁️</div>
-        <span class="pill">Logic App + TI Upload API</span>
+        <span class="pill">TAXII data connector (built-in)</span>
         <h3>Microsoft Sentinel</h3>
-        <p>STIX bundle → Graph TI Upload API; analytics rule önerileri; KQL externaldata fallback.</p>
-        <div class="meta"><span>~20 dk</span><span>Azure Sentinel</span></div>
+        <p>Data connectors → Threat Intelligence - TAXII. Koleksiyon başına connector, saatlik polling.</p>
+        <div class="meta"><span>~15 dk</span><span>Azure Sentinel</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/generic-stix.md">
         <div class="icon">🧩</div>
         <span class="pill muted">CrowdStrike · Defender · XSOAR · Elastic · Wazuh · Suricata</span>
-        <h3>Generic STIX / CSV</h3>
-        <p>STIX 2.1 / TAXII / CSV / text slice destekleyen herhangi bir SIEM/XDR/EDR/SOAR için pattern'lar.</p>
+        <h3>Diğer ürünler</h3>
+        <p>Built-in TAXII 2.1 client'ı olan veya text slice tüketebilen ürünler için pattern'lar.</p>
         <div class="meta"><span>değişken</span><span>vendor-agnostik</span></div>
       </a>
       <a class="card" href="../view.html?file=integrations/README.md">
         <div class="icon">📋</div>
         <span class="pill muted">Index</span>
         <h3>Tüm rehberler (README)</h3>
-        <p>Hangi entegrasyon kim için + artifact eşlemesi + üç URL kanalı (rolling / stable / version-locked).</p>
+        <p>Hangi entegrasyon kim için + tek TAXII endpoint + BG Rehberi madde eşlemesi.</p>
         <div class="meta"><span>genel bakış</span></div>
       </a>
     </div>
   </section>
 
   <section>
-    <h2>Hızlı erişim — kalıcı URL'ler</h2>
+    <h2>Tek public TAXII endpoint</h2>
     <p class="section-sub">
-      Aşağıdaki üç kanaldan birini SIEM/TIP konfigine doğrudan verebilirsiniz.
-      <strong>Rolling</strong>: her saat tazelenir, URL'ler aynı kalır.
-      <strong>Stable</strong>: manuel tag, versiyon audit için.
+      Tüm entegrasyon rehberleri aynı URL'yi kullanır — kimlik doğrulama yok, anonim public servis.
+      Self-host eden kurumlar (Docker / Kubernetes) için sadece host kısmı değişir.
     </p>
-<pre><code># Rolling (saatlik tazelenen) - SIEM ingest icin onerilen
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-feeds.tar.gz
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-qradar-pack.tar.gz
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/TA-sgb-threatintel.tar.gz
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-domain.stix2.json
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/sgb-ip.stix2.json
-https://github.com/bilsectr/sgb-api-bridge/releases/download/feeds-latest/SHA256SUMS
+<pre><code>Discovery: https://sgb-taxii.bilsec.tr/taxii2/
+API root:  https://sgb-taxii.bilsec.tr/api/
 
-# Stable snapshot
-https://github.com/bilsectr/sgb-api-bridge/releases/latest/download/sgb-feeds.tar.gz</code></pre>
+# Koleksiyonlar
+https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-botnet-cc/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-apt-cc/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-exploit-kit/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-malware-download/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-mining/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-mobile-cc/objects/
+https://sgb-taxii.bilsec.tr/api/collections/sgb-other/objects/</code></pre>
 
     <div class="callout">
-      <strong>Severity:</strong> QRadar ve Splunk aynı formülü kullanır —
-      <code>connectiontype × criticality_level</code> → 1-10. Tek kaynak:
-      <a href="https://github.com/bilsectr/sgb-api-bridge/blob/main/siem/qradar/severity-matrix.md" target="_blank" rel="noopener">severity-matrix.md</a>.
+      <strong>Severity:</strong> Tüm UC dosyaları aynı formülü kullanır —
+      <code>connectiontype × criticality_level</code> → 1-10. Detay:
+      <a href="../view.html?file=usecases/README.md">usecases/README.md</a>.
     </div>
   </section>
 

@@ -22,7 +22,7 @@ TAXII_ENABLED="${SGB_BRIDGE_TAXII_ENABLED:-1}"
 SYNC_MODE="${SGB_BRIDGE_SYNC_MODE:-full}"
 
 # Veri dizinleri yoksa olustur
-mkdir -p "$DATA_ROOT/docs" "$DATA_ROOT/state" "$DATA_ROOT/feeds"
+mkdir -p "$DATA_ROOT/docs" "$DATA_ROOT/state"
 
 # Seed: volume/PVC bos ise imaja gomulu gecmis veriyi kopyala.
 # -n (no-clobber): mevcut volume verisinin uzerine asla yazmaz.
@@ -78,7 +78,7 @@ case "$MODE" in
     exec nginx -g 'daemon off;'
     ;;
   sync-once)
-    SUBMODE="${1:-delta}"
+    SUBMODE="${1:-full}"
     echo "[entrypoint] sync-once: $SUBMODE"
     exec python /app/scripts/sync.py --mode "$SUBMODE"
     ;;

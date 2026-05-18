@@ -26,7 +26,7 @@ kaynağında, hangi SGB feed alanı, nasıl korelasyon.)
 | ID | UC-XX-NNN |
 | MITRE ATT&CK | TAxxxx / Txxxx |
 | Connectiontype | PH/BC/AC/EK/MF/MM/MC/OT/XX |
-| Severity (base) | 1-10 (severity-matrix.md formülü) |
+| Severity (base) | 1-10 (README.md#severity formülü) |
 | Veri kaynakları | (DNS, Proxy, Firewall, EDR, Email, MDM, ...) |
 | TAXII koleksiyonu | `sgb-<phishing\|botnet-cc\|apt-cc\|exploit-kit\|malware-download\|mining\|mobile-cc\|other>` |
 | Response | PB-XX-NNN (varsa) |

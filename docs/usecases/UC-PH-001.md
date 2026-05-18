@@ -77,12 +77,10 @@ when the event QID is one of the following: DNS Query QIDs
 **Response bloğu:**
 - Dispatch new event named **"SGB Phishing DNS"**
 - Magnitude severity: 5 (criticality modifier rule action ile uygulanır;
-  bkz. [severity-matrix.md](../../siem/qradar/severity-matrix.md))
+  bkz. [README.md#severity](README.md#severity))
 - Annotate offense: "SGB phishing domain match — bkz. UC-PH-001"
 - Reference set: add source IP to `SGB_SUSPECTED_HOSTS`
 - (Opsiyonel) Email notification + SOAR webhook
-
-AQL test sorgusu: [siem/qradar/aql/uc-ph-001-test.aql](../../siem/qradar/aql/)
 
 ## Splunk uygulaması
 
@@ -98,8 +96,6 @@ AQL test sorgusu: [siem/qradar/aql/uc-ph-001-test.aql](../../siem/qradar/aql/)
 | eval severity=5 + criticality_level
 | stats count by src_ip, query, source, severity
 ```
-
-Bkz. [siem/splunk/TA-sgb-threatintel/default/savedsearches.conf](../../siem/splunk/TA-sgb-threatintel/)
 
 ## Yanlış pozitif (False Positive) notları
 

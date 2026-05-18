@@ -2,11 +2,10 @@
 # sgb-api-bridge: tek imaj, mode dispatcher ile hem all-in-one (Docker) hem split (K8s) destekler.
 #
 # Default davranis (docker run sgb-api-bridge):
-#   - nginx /data/docs ve /data/feeds'i 80 portundan serve eder
-#   - python sync.py --mode loop arka planda delta'yi saatte bir tetikler
+#   - nginx /data/docs'u 80 portundan serve eder
+#   - python sync.py --mode loop arka planda saatlik full sync'i tetikler
 #
 # Alternatif modlar (K8s CronJob ve manuel kullanim icin):
-#   docker run --rm sgb-api-bridge sync-once delta
 #   docker run --rm sgb-api-bridge sync-once full
 #   docker run --rm sgb-api-bridge healthcheck
 #   docker run -d sgb-api-bridge serve              # sadece HTTP, sync yok
@@ -14,12 +13,7 @@
 #
 # HTTP endpoint'ler (default serve modunda):
 #   /                                                  HTML ana sayfa
-#   /domain-list.txt /ip-list.txt /url-list.txt ...    geriye uyumlu duz feed'ler
-#   /feeds/sgb-master.csv                              master kanonik tablo
-#   /feeds/sgb-master.jsonl                            JSON Lines
-#   /feeds/stix/sgb-{type}.stix2.json                  STIX 2.1 bundle (per-type)
-#   /feeds/by-connectiontype/*.txt                     CT bazli slice'lar
-#   /feeds/index.json                                  manifest (sha256 + size)
+#   /domain-list.txt /ip-list.txt /url-list.txt ...    firewall feed'leri
 #   /taxii2/ /api/                                     TAXII 2.1 servisi
 #   /stats.json                                        SQLite + count'lar dahil saglik
 
@@ -54,7 +48,7 @@ COPY docs /app/seed/docs
 COPY state /app/seed/state
 
 RUN chmod +x /entrypoint.sh \
- && mkdir -p /data/docs /data/state /data/feeds \
+ && mkdir -p /data/docs /data/state \
  && chown -R www-data:www-data /data /app \
  && ln -sf /dev/stdout /var/log/nginx/access.log \
  && ln -sf /dev/stderr /var/log/nginx/error.log \

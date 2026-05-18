@@ -37,8 +37,8 @@
       <strong>(1) düz metin feed</strong> — FortiGate, Sophos, Palo Alto, pfSense gibi cihazlarda
       doğrudan blok listesi, ve <strong>(2) TAXII 2.1 servisi</strong> — QRadar, Splunk, Sentinel,
       MISP, OpenCTI, XSOAR ürünleri tek URL ile native TAXII client'ları üzerinden
-      tüketir. 20 use case kütüphanesi ile birlikte. Saatlik delta sync, açık kaynak,
-      GitHub Pages / Docker / K8s / GitLab dağıtım seçenekleri.
+      tüketir. 20 use case kütüphanesi ile birlikte. Saatlik tam sync, açık kaynak;
+      GitHub Pages, Docker veya Kubernetes ile dağıtılabilir.
     </p>
     <div class="cta">
       <a class="btn primary" href="#engelle">Engelleme — firewall'a tanıt</a>
@@ -143,8 +143,8 @@
       <strong>Format:</strong> Her dosya satır başına <em>tek bir kayıt</em> içerir.
       Yorum satırı, header veya BOM yoktur — FortiGate <code>system external-resource</code>,
       Palo Alto <code>external-list</code>, pfBlockerNG için doğrudan tüketilebilir.
-      SIEM tarafı için zenginleştirilmiş CSV/STIX kanalı vardır
-      (<a href="#siem">aşağıda</a>, GitHub Release rolling).
+      SIEM/XDR tarafı için aynı veri TAXII 2.1 üzerinden servis edilir
+      (<a href="#siem">aşağıda</a>).
     </div>
   </section>
 
@@ -154,7 +154,7 @@
     <p class="section-sub">
       Cihazınızı seçin. Tüm örneklerde varsayılan base URL
       <code>https://bilsectr.github.io/sgb-api-bridge/</code>'dir; kendi fork / Docker /
-      GitLab sunucunuzu kullanıyorsanız sadece host kısmını değiştirin.
+      Kubernetes sunucunuzu kullanıyorsanız sadece host kısmını değiştirin.
     </p>
 
     <div class="tabs" role="tablist">
@@ -427,36 +427,31 @@ curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?added
   <section id="deploy">
     <h2>Dağıtım seçenekleri <span class="hash">#deploy</span></h2>
     <p class="section-sub">
-      Projeyi kullanmanın <strong>dört farklı yolu</strong> vardır. İhtiyacınıza göre seçin —
-      hepsi aynı çıktıyı üretir, sadece kim host eder ve nereden servis edilir farkı vardır.
+      Projeyi kullanmanın <strong>üç yolu</strong> vardır. İhtiyacınıza göre seçin —
+      hepsi aynı çıktıyı (txt feed + TAXII 2.1) üretir, sadece kim host eder ve nereden
+      servis edilir farkı vardır.
     </p>
 
     <div class="grid cards">
-      <a class="card" href="https://github.com/bilsectr/sgb-api-bridge/blob/main/docs/setup-github.md" target="_blank" rel="noopener">
+      <a class="card" href="view.html?file=setup-github.md">
         <div class="icon">☁️</div>
         <span class="pill">Önerilen · Sıfır kurulum</span>
         <h3>1) GitHub Pages</h3>
         <p>Bu sayfa zaten bu modelde. URL'leri firewall'a verin. Fork edebilirsiniz.</p>
         <span class="more">Kurulum rehberi →</span>
       </a>
-      <a class="card" href="https://github.com/bilsectr/sgb-api-bridge/blob/main/docs/setup-gitlab.md" target="_blank" rel="noopener">
-        <div class="icon">🏢</div>
-        <span class="pill warn">Air-gapped</span>
-        <h3>2) Self-hosted GitLab</h3>
-        <p>İnternet erişimi yok ortamlar için: scheduled pipeline + dahili Pages.</p>
-        <span class="more">Kurulum rehberi →</span>
-      </a>
-      <a class="card" href="https://github.com/bilsectr/sgb-api-bridge/blob/main/docs/setup-docker.md" target="_blank" rel="noopener">
+      <a class="card" href="view.html?file=setup-docker.md">
         <div class="icon">🐳</div>
-        <span class="pill">İndir-çalıştır-unut</span>
-        <h3>3) Docker</h3>
-        <p>Tek konteyner: nginx + sync + SIEM pack rebuild. <code>/feeds/</code>, <code>/siem/</code> serve eder.</p>
+        <span class="pill">Self-host · Air-gapped</span>
+        <h3>2) Docker</h3>
+        <p>Tek konteyner: nginx + sync + TAXII 2.1 ağacı. Kendi ortamınızda
+          <code>txt feed</code> ve <code>/taxii2/</code> servis edersiniz.</p>
         <span class="more">Kurulum rehberi →</span>
       </a>
-      <a class="card" href="https://github.com/bilsectr/sgb-api-bridge/blob/main/docs/setup-k8s.md" target="_blank" rel="noopener">
+      <a class="card" href="view.html?file=setup-k8s.md">
         <div class="icon">⎈</div>
         <span class="pill">Kurumsal</span>
-        <h3>4) Kubernetes</h3>
+        <h3>3) Kubernetes</h3>
         <p>CronJob + Deployment + Service + PVC. Helm/kustomize ile mevcut cluster'a entegre.</p>
         <span class="more">Kurulum rehberi →</span>
       </a>
@@ -480,20 +475,20 @@ curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?added
   <!-- =================== NASIL CALISIR =================== -->
   <section id="how">
     <h2>Nasıl çalışır? <span class="hash">#how</span></h2>
-    <p class="section-sub">İki tür senkron mekanizması + SIEM pack rebuild döngüsü.</p>
+    <p class="section-sub">Saatlik tam sync + her sync sonrası TAXII rebuild + edge servis.</p>
 
     <table>
       <thead><tr><th>Mekanizma</th><th>Sıklık</th><th>Süre</th><th>Üretir</th></tr></thead>
       <tbody>
         <tr>
-          <td><strong>Delta sync</strong></td>
-          <td>Saatte 1, otomatik</td>
-          <td>~1-3 dk</td>
-          <td>Yeni kayıtları SQLite'a + <code>docs/*-list.txt</code>'e ekler</td>
+          <td><strong>Hourly sync</strong></td>
+          <td>Saatte 1, otomatik (GitHub Actions)</td>
+          <td>~10 dk</td>
+          <td>SGB API'sini sayfalayarak SQLite'a yazar; <code>docs/*-list.txt</code> dosyalarını yeniler</td>
         </tr>
         <tr>
           <td><strong>TAXII rebuild</strong></td>
-          <td>Her delta sonrası</td>
+          <td>Her sync sonrası</td>
           <td>~30 sn</td>
           <td>Statik TAXII 2.1 ağacı (<code>docs/taxii/</code>) — discovery + 8 koleksiyon × manifest/objects sayfaları</td>
         </tr>
@@ -503,37 +498,28 @@ curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?added
           <td>edge</td>
           <td><code>sgb-taxii.bilsec.tr</code> üzerinden TAXII envelope ve cursor pagination'ı serve eder</td>
         </tr>
-        <tr>
-          <td><strong>Full sync</strong></td>
-          <td>Yalnız ilk kurulum (elle)</td>
-          <td>~10-15 dk</td>
-          <td>Sıfırdan tam re-sync; fork edenler için <em>gerekli değil</em></td>
-        </tr>
       </tbody>
     </table>
 
     <div class="callout">
       <strong>Geçmiş veri zaten repo'da.</strong> Repo'yu klonlayan/fork eden herkes
-      <code>docs/*-list.txt</code> + <code>state/seen_ids.json</code> + <code>state/sgb.db</code>
-      dosyalarını dolu alır. Delta sync buradan devam eder.
+      <code>docs/*-list.txt</code> + <code>state/seen_ids.json</code> dosyalarını dolu alır;
+      release asset olarak yayınlanan <code>sgb.db</code> ile SQLite tamamlanır.
     </div>
 
     <h3>Mimari</h3>
     <ul>
-      <li>GitHub Actions <em>(Sync delta, hourly)</em> → <code>sync.py</code> → SQLite + txt feed</li>
+      <li>GitHub Actions <em>(hourly)</em> → <code>sync.py --mode full</code> → SQLite + txt feed</li>
       <li>SGB API: <a href="https://siberguvenlik.gov.tr/api/address/index" target="_blank" rel="noopener">siberguvenlik.gov.tr/api/address/index</a> (newest-first, monoton ID)</li>
       <li>Aynı pipeline: <code>build_taxii.py</code> → <code>docs/taxii/</code> (statik TAXII 2.1 ağacı)</li>
-      <li>Yayın: GitHub Pages (txt feed + TAXII ağacı) + Cloudflare Worker (<code>sgb-taxii.bilsec.tr</code>) + Docker imajı (nginx ile self-host)</li>
+      <li>Yayın: GitHub Pages (txt feed + TAXII ağacı) + Cloudflare Worker (<code>sgb-taxii.bilsec.tr</code>) + Docker / K8s imajı (nginx ile self-host)</li>
     </ul>
 
     <h3>CLI ile lokal çalıştırma</h3>
-<pre><code>git clone https://github.com/bilsectr/sgb-api-bridge
-cd sgb-api-bridge
-pip install requests
+<pre><code>pip install requests
 
-python scripts/sync.py --mode delta    # ~1-3 dk, repo'daki veriden devam eder
-python scripts/sync.py --mode loop     # docker icin: delta'yi surekli tetikler
-python scripts/sync.py --mode full     # SADECE sifirdan tam re-sync gerekirse
+python scripts/sync.py --mode full     # SGB API'sini bastan sona cek (saatlik aksiyonun yaptigi sey)
+python scripts/sync.py --mode loop     # docker icin: belirli araliklarla full sync tetikler
 python scripts/build_taxii.py          # docs/taxii/ statik TAXII agacini uret</code></pre>
   </section>
 
@@ -542,8 +528,7 @@ python scripts/build_taxii.py          # docs/taxii/ statik TAXII agacini uret</
     <p class="section-sub">
       Bu proje <strong>Siber Güvenlik Başkanlığı ile resmi bir bağlantısı olmayan</strong>,
       kâr amacı gütmeyen, açık kaynak bir araçtır. Üretim sistemlerinde "as-is" kullanılır;
-      veri doğruluğundan SGB sorumludur. Kaynak kod
-      <a href="https://github.com/bilsectr/sgb-api-bridge/blob/main/LICENSE" target="_blank" rel="noopener">MIT lisansı</a> altında.
+      veri doğruluğundan SGB sorumludur. Kaynak kod <strong>MIT lisansı</strong> altındadır.
     </p>
   </section>
 

@@ -1,8 +1,8 @@
 # Docker Kurulumu
 
-Tek konteyner ile SGB API Bridge'i ayağa kaldır. İçinde **nginx** (feed'leri
-HTTP olarak yayar) + **sync loop** (saatte bir SGB API'sinden delta sync)
-birlikte çalışır.
+Tek konteyner ile SGB API Bridge'i ayağa kaldır. İçinde **nginx** (txt feed'leri
+ve TAXII 2.1 servisini HTTP olarak yayar) + **sync loop** (saatte bir SGB
+API'sinden tam sync) birlikte çalışır.
 
 ## Bu kurulum BG Rehberi'nin neyini karşılar?
 
@@ -38,13 +38,13 @@ Konteyner ayağa kalkar ve **hemen kullanılabilir**:
 - İmaj, geçmiş feed verisini (`docs/*-list.txt`) ve `state/seen_ids.json`'u
   **gömülü taşır**. Boş bir volume'a ilk açılışta bu seed verisi `/data`'ya
   kopyalanır.
-- HTTP 8080 portu anında dolu feed'leri sunar — full sync beklemeye gerek yok.
-- Internal loop her saat **delta sync** çalıştırır, seed verisindeki
-  `max_id`'den devam eder.
+- HTTP 8080 portu anında dolu feed'leri ve TAXII ağacını sunar.
+- Internal loop her saat **tam sync** çalıştırır (`--per-page=1000`, ~10 dk),
+  ardından `build_taxii.py` ile `/data/docs/taxii/` ağacını yeniden üretir.
 - `docker logs -f sgb-api-bridge` ile izleyebilirsin.
 
 > İmaj her hafta yeniden build edilir; gömülü seed verisi en fazla ~1 hafta
-> bayattır, ilk delta bu boşluğu kapatır. **Full sync gerekmez.**
+> bayattır, ilk hourly sync bu boşluğu kapatır.
 
 ## docker-compose ile
 
@@ -108,18 +108,14 @@ sgb-feed.kurum.local {
 ## Manuel komutlar
 
 ```bash
-# Tek seferlik delta (debug için)
-docker exec sgb-api-bridge /entrypoint.sh sync-once delta
+# Tek seferlik full sync (debug için)
+docker exec sgb-api-bridge /entrypoint.sh sync-once full
 
 # Health check
 docker exec sgb-api-bridge /entrypoint.sh healthcheck
 
 # Container içinde shell
 docker exec -it sgb-api-bridge sh
-
-# Sıfırdan tam re-sync (NADİR — seed verisi çok bayatladıysa, ~10-15+ saat):
-docker run --rm -v sgb-api-bridge-data:/data \
-  ghcr.io/bilsectr/sgb-api-bridge:latest sync-once full
 
 # State + feed'leri tamamen sil (sonraki açılış seed verisinden tekrar başlar)
 docker run --rm -v sgb-api-bridge-data:/data alpine \
@@ -131,8 +127,9 @@ docker run --rm -v sgb-api-bridge-data:/data alpine \
 | Variable | Default | Açıklama |
 |---|---|---|
 | `SGB_BRIDGE_ROOT` | `/data` | State ve feed dosyalarının kök dizini |
-| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda delta sync sıklığı (sn) |
-| `SGB_BRIDGE_DELTA_MAX_PAGES` | `1000` | Delta'nın tek seferde gezeceği maks. sayfa (bayat state güvenlik tavanı) |
+| `SGB_BRIDGE_DELTA_INTERVAL_SEC` | `3600` | Loop modunda iki sync arası bekleme (sn) |
+| `SGB_BRIDGE_SYNC_MODE` | `full` | Loop modunda kullanılacak sync alt-modu (`full` önerilen) |
+| `SGB_BRIDGE_TAXII_ENABLED` | `1` | TAXII ağacı rebuild edilsin mi |
 | `TZ` | `UTC` | Konteyner saat dilimi (loglar için) |
 
 ## Denetim için (BG 3.1.8.4 — Detaylı Kayıt)
@@ -153,7 +150,7 @@ Fluent Bit) ileterek BG **3.1.8.6** (Merkezi Kayıt Yönetimi) kapsamına alın.
 - **404 dönüyor**: Seed verisi kopyalanmamış olabilir.
   `docker exec sgb-api-bridge ls -la /data/docs` ile kontrol et. Boşsa
   imajı kendin build ettiysen `docs/` klasörünü dahil etmemişsindir —
-  `sync-once full` ile bootstrap et.
+  `/entrypoint.sh sync-once full` ile bootstrap et.
 - **Konteyner sürekli restart oluyor**: SGB API'sine erişim yok ya da disk
   dolu. `docker logs sgb-api-bridge --tail 200` incele.
 - **`Permission denied` /data altında**: Volume'un sahibi yanlış UID.
