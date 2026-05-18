@@ -5,6 +5,9 @@
 <title>SGB API Bridge — Tehdit beslemesi: firewall'da engelleyin, SIEM'de izleyin</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="Siber Güvenlik Başkanlığı (eski USOM) tehdit beslemesini iki amaçla servis eder: firewall'larda engelleme için düz metin feed (FortiGate, Sophos, Palo Alto, pfSense) ve SIEM/TIP/XDR ortamlarında izleme için TAXII 2.1 servisi (QRadar, Splunk, Sentinel, MISP, OpenCTI, XSOAR) + 20 use case kütüphanesi.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sgb.css">
 </head>
 <body>
@@ -30,21 +33,18 @@
 <main>
 
   <section class="hero">
-    <span class="tag">USOM → SGB · Saatlik · MIT · Düz metin feed + TAXII 2.1</span>
-    <h1>SGB tehdit beslemesini hem firewall'unuzda, hem SIEM'inizde konuşturun.</h1>
+    <span class="tag">Canlı · saatlik sync · açık kaynak (MIT)</span>
+    <h1>Tehditleri <em>sessizce</em> dışarıda tutar.</h1>
     <p class="lede">
-      <strong>SGB API Bridge</strong> tek bir kaynaktan iki ayrı görevi servis eder:
-      <strong>(1) düz metin feed</strong> — FortiGate, Sophos, Palo Alto, pfSense gibi cihazlarda
-      doğrudan blok listesi, ve <strong>(2) TAXII 2.1 servisi</strong> — QRadar, Splunk, Sentinel,
-      MISP, OpenCTI, XSOAR ürünleri tek URL ile native TAXII client'ları üzerinden
-      tüketir. 20 use case kütüphanesi ile birlikte. Saatlik tam sync, açık kaynak;
-      GitHub Pages, Docker veya Kubernetes ile dağıtılabilir.
+      <strong>SGB API Bridge</strong> Siber Güvenlik Başkanlığı (eski USOM) tehdit beslemesini
+      tek kaynaktan iki ayrı görevle akıtır: firewall'larda <strong>düz metin feed</strong>,
+      SIEM/TIP/XDR'larda <strong>TAXII 2.1 servisi</strong>. Özel script yok, push servisi yok,
+      kimlik doğrulama yok. URL'yi kopyala, cihazına yapıştır — gerisini saatlik sync halleder.
     </p>
     <div class="cta">
-      <a class="btn primary" href="#engelle">Engelleme — firewall'a tanıt</a>
-      <a class="btn primary" href="#siem">İzleme — TAXII servisi</a>
-      <a class="btn" href="#feeds">Feed URL'leri</a>
-      <a class="btn" href="https://github.com/bilsectr/sgb-api-bridge" target="_blank" rel="noopener">Kaynak kod</a>
+      <a class="btn primary" href="#engelle">Feed'i bağla →</a>
+      <a class="btn" href="#siem">TAXII URL'sini gör</a>
+      <a class="btn" href="https://github.com/bilsectr/sgb-api-bridge" target="_blank" rel="noopener">GitHub</a>
     </div>
 
     <div class="stats" id="stats">
@@ -53,6 +53,47 @@
       <div class="stat"><div class="k">URL</div><div class="v" id="s-url">~7K</div></div>
       <div class="stat"><div class="k">TAXII koleksiyon</div><div class="v"><a href="view.html?file=setup-taxii.md" style="color:inherit">8</a></div></div>
       <div class="stat"><div class="k">Use Case</div><div class="v"><a href="usecases/" style="color:inherit">20</a></div></div>
+    </div>
+  </section>
+
+  <section class="trusted">
+    <p class="section-sub" style="text-align:center; margin:0 auto 8px; font-size:13px; text-transform:uppercase; letter-spacing:0.1em; color:var(--mist); font-weight:600;">
+      Şu cihaz ve platformlarla konuşur
+    </p>
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span class="marquee-item">FortiGate</span>
+        <span class="marquee-item">Sophos XG</span>
+        <span class="marquee-item">Palo Alto</span>
+        <span class="marquee-item">pfSense</span>
+        <span class="marquee-item">Pi-hole</span>
+        <span class="marquee-item">MikroTik</span>
+        <span class="marquee-item">IBM QRadar</span>
+        <span class="marquee-item">Splunk ES</span>
+        <span class="marquee-item">Microsoft Sentinel</span>
+        <span class="marquee-item">MISP</span>
+        <span class="marquee-item">OpenCTI</span>
+        <span class="marquee-item">Cortex XSOAR</span>
+        <span class="marquee-item">Trellix XDR</span>
+        <span class="marquee-item">Falcon</span>
+        <span class="marquee-item">Elastic</span>
+        <!-- duplicate for seamless loop -->
+        <span class="marquee-item">FortiGate</span>
+        <span class="marquee-item">Sophos XG</span>
+        <span class="marquee-item">Palo Alto</span>
+        <span class="marquee-item">pfSense</span>
+        <span class="marquee-item">Pi-hole</span>
+        <span class="marquee-item">MikroTik</span>
+        <span class="marquee-item">IBM QRadar</span>
+        <span class="marquee-item">Splunk ES</span>
+        <span class="marquee-item">Microsoft Sentinel</span>
+        <span class="marquee-item">MISP</span>
+        <span class="marquee-item">OpenCTI</span>
+        <span class="marquee-item">Cortex XSOAR</span>
+        <span class="marquee-item">Trellix XDR</span>
+        <span class="marquee-item">Falcon</span>
+        <span class="marquee-item">Elastic</span>
+      </div>
     </div>
   </section>
 
@@ -65,7 +106,7 @@
     <div class="choice">
       <a class="path" href="#engelle">
         <div class="lbl">Yol 1 — Engelleme</div>
-        <h3>🛡️ Firewall'da blok</h3>
+        <h3>Firewall'da blok</h3>
         <p>
           URL'yi cihaza ver, saatte bir kendi çekip yükler. Manuel "indir + yükle"
           döngüsü yok. <strong>Düz metin</strong> formatı.
@@ -82,7 +123,7 @@
       </a>
       <a class="path" href="#siem">
         <div class="lbl">Yol 2 — İzleme</div>
-        <h3>🔍 SIEM'de korelasyon + alarm</h3>
+        <h3>SIEM'de korelasyon + alarm</h3>
         <p>
           Tek URL ver, ürünün built-in TAXII 2.1 client'ı koleksiyonları çeksin —
           özel pack, script veya artifact yok. <strong>TAXII 2.1 · STIX 2.1 indicator</strong>.
@@ -150,7 +191,7 @@
 
   <!-- =================== ENGELLEME =================== -->
   <section id="engelle">
-    <h2>🛡️ Engelleme — firewall / proxy entegrasyonu <span class="hash">#engelle</span></h2>
+    <h2>Engelleme — firewall / proxy entegrasyonu <span class="hash">#engelle</span></h2>
     <p class="section-sub">
       Cihazınızı seçin. Tüm örneklerde varsayılan base URL
       <code>https://bilsectr.github.io/sgb-api-bridge/</code>'dir; kendi fork / Docker /
@@ -318,7 +359,7 @@ http_access deny sgb_blacklist
 
   <!-- =================== SIEM =================== -->
   <section id="siem">
-    <h2>🔍 SIEM / İzleme — TAXII 2.1 servisi <span class="hash">#siem</span></h2>
+    <h2>SIEM / İzleme — TAXII 2.1 servisi <span class="hash">#siem</span></h2>
     <p class="section-sub">
       Tek public TAXII 2.1 endpoint. Tüm modern SIEM/TIP/XDR ürünleri kendi built-in
       TAXII client'ı ile bu URL'yi doğrudan çeker — özel script, push servisi veya
@@ -477,6 +518,24 @@ curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?added
     <h2>Nasıl çalışır? <span class="hash">#how</span></h2>
     <p class="section-sub">Saatlik tam sync + her sync sonrası TAXII rebuild + edge servis.</p>
 
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h4>Çek</h4>
+        <p>GitHub Actions saatte bir SGB API'sini baştan sona sayfalar. Yeni IOC'ler SQLite'a düşer.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h4>Dönüştür</h4>
+        <p>Aynı veri iki formata üretilir: düz metin <code>.txt</code> feed ve statik TAXII 2.1 ağacı (STIX 2.1 indicator'lar).</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h4>Sun</h4>
+        <p>GitHub Pages CDN üzerinden txt feed, Cloudflare Worker üzerinden TAXII. Self-host için Docker / K8s imajı.</p>
+      </div>
+    </div>
+
     <table>
       <thead><tr><th>Mekanizma</th><th>Sıklık</th><th>Süre</th><th>Üretir</th></tr></thead>
       <tbody>
@@ -521,6 +580,17 @@ curl -s "https://sgb-taxii.bilsec.tr/api/collections/sgb-phishing/objects/?added
 python scripts/sync.py --mode full     # SGB API'sini bastan sona cek (saatlik aksiyonun yaptigi sey)
 python scripts/sync.py --mode loop     # docker icin: belirli araliklarla full sync tetikler
 python scripts/build_taxii.py          # docs/taxii/ statik TAXII agacini uret</code></pre>
+  </section>
+
+  <section class="cta-banner">
+    <div>
+      <h2>Beş dakikada bağla.</h2>
+      <p>Bir URL kopyala, firewall'una yapıştır. Saatlik sync devralır — geri kalanı bizden.</p>
+    </div>
+    <div class="cta-actions">
+      <a class="btn" href="#feeds">Feed URL'lerini gör →</a>
+      <a class="btn ghost" href="https://github.com/bilsectr/sgb-api-bridge" target="_blank" rel="noopener">GitHub</a>
+    </div>
   </section>
 
   <section>
@@ -584,7 +654,11 @@ python scripts/build_taxii.py          # docs/taxii/ statik TAXII agacini uret</
         await navigator.clipboard.writeText(btn.dataset.copy);
         const old = btn.textContent;
         btn.textContent = '✓ Kopyalandı';
-        setTimeout(() => btn.textContent = old, 1500);
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = old;
+          btn.classList.remove('copied');
+        }, 1500);
       } catch (e) {}
     });
   });
